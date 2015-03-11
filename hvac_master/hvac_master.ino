@@ -14,14 +14,19 @@ IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
 // Definition of digital pins:
-pinBtTx = 2;
-pinBtRx = 3;
+int pinBtTx = 2;
+int pinBtRx = 3;
 // Definition of analog pins:
-pinLM35 = 0;
+int pinLM35 = 0;
+
+float tempZone01;
 
 void setup() {
+  // The next two lines are to avoid the board from hanging after some requests:
   pinMode(4, OUTPUT);
   digitalWrite(4, HIGH);
+
+  pinMode(pinLM35, INPUT); // setup LM35 temperature sensor
   
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
@@ -55,20 +60,19 @@ void loop() {
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/html");
           client.println("Connection: close");  // the connection will be closed after completion of the response
-          client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+          //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
           client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html>");
-          // output the value of each analog input pin
-          for (int analogChannel = 0; analogChannel < 6; analogChannel++) {
-            int sensorReading = analogRead(analogChannel);
-            client.print("analog input ");
-            client.print(analogChannel);
-            client.print(" is ");
-            client.print(sensorReading);
-            client.println("<br />");
-          }
-          client.println("</html>");
+          //client.println("<!DOCTYPE HTML>");
+          //client.println("<html>");
+
+          client.print("{");
+          client.print("\"tempZone01\":");
+          tempZone01 = ( ( 5.0 * analogRead(pinLM35) * 100 ) / 1024 );
+          client.print(tempZone01);
+          client.print(",");
+          client.print("}");
+
+          //client.println("</html>");
           break;
         }
         if (c == '\n') {
