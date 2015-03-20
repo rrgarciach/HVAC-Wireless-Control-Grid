@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include <Ethernet.h>
+#include <SoftwareSerial.h>
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -14,19 +15,22 @@ IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
 // Definition of digital pins:
-int pinBtTx = 2;
-int pinBtRx = 3;
-// Definition of analog pins:
-int pinLM35 = 0;
+// slave Bluetooth socket to communicate with Mobile App:
+// bluetooth module's TX goes to arduino's TX (in this case, pin 3).
+int pinBtTxMobile = 3;
+int pinBtRxMobile = 2;
+SoftwareSerial mobile(pinBtRxMobile,pinBtTxMobile);
+// master Bluetooth socket to communicate with Scout Devices:
+// bluetooth module's TX goes to arduino's TX (in this case, pin 6).
+int pinBtTxScout_01 = 6;
+int pinBtRxScout_01 = 5;
+SoftwareSerial scout(pinBtRxScout_01,pinBtTxScout_01);
 
-float tempZone01;
 
 void setup() {
   // The next two lines are to avoid the board from hanging after some requests:
   pinMode(4, OUTPUT);
   digitalWrite(4, HIGH);
-
-  pinMode(pinLM35, INPUT); // setup LM35 temperature sensor
   
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
@@ -43,10 +47,14 @@ void setup() {
 
 void loop() {
   // listen for incoming clients
+  checkForClient();
+}
+
+void checkForClient() {
   EthernetClient client = server.available();
   if (client) {
     Serial.println("new client");
-    // an http request ends with a blank line
+    // an HTTP request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
       if (client.available()) {
@@ -56,23 +64,19 @@ void loop() {
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
-          // send a standard http response header
+          // send a standard HTTP response header
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/html");
           client.println("Connection: close");  // the connection will be closed after completion of the response
           //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
           client.println();
-          //client.println("<!DOCTYPE HTML>");
-          //client.println("<html>");
 
+          // printing JSON response:
           client.print("{");
           client.print("\"tempZone01\":");
-          tempZone01 = ( ( 5.0 * analogRead(pinLM35) * 100 ) / 1024 );
-          client.print(tempZone01);
           client.print(",");
           client.print("}");
 
-          //client.println("</html>");
           break;
         }
         if (c == '\n') {
