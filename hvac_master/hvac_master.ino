@@ -24,8 +24,11 @@ SoftwareSerial mobile(pinBtRxMobile,pinBtTxMobile);
 // bluetooth module's TX goes to arduino's TX (in this case, pin 6).
 int pinBtTxScout_01 = 6;
 int pinBtRxScout_01 = 5;
-SoftwareSerial scout(pinBtRxScout_01,pinBtTxScout_01);
-
+SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
+// String to process:
+String message;
+// variable to store received characters from Bluetooth devices:
+char character;
 
 void setup() {
   // The next two lines are to avoid the board from hanging after some requests:
@@ -34,6 +37,8 @@ void setup() {
   
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
+  mobile.begin(38400);
+  scout_01.begin(38400);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
@@ -46,11 +51,13 @@ void setup() {
 }
 
 void loop() {
+  checkForScouts();
+  checkForMobiler();
   // listen for incoming clients
-  checkForClient();
+  checkForEthernet();
 }
 
-void checkForClient() {
+void checkForEthernet() {
   EthernetClient client = server.available();
   if (client) {
     Serial.println("new client");
@@ -94,5 +101,31 @@ void checkForClient() {
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
+  }
+}
+
+void checkForScouts() {
+  if ( scout_01.available() ) {
+    character = scout_01.read();
+    Serial.print(character);
+    delay(50);
+    message += character;
+  }
+  Serial.println("");
+  scout_01.println("");
+  if ( message == "no_movement" ) {
+    Serial.println("More than 60 seconds without movement.");
+  } else if ( message == "temperature" ) {}
+}
+
+void checkForMobiler() {
+  if ( mobile.available() ) {
+    if ( mobile.available() ) {
+    character = mobile.read();
+    Serial.print(character);
+    delay(50);
+  }
+  Serial.println("");
+  mobile.println("");
   }
 }
