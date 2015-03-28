@@ -1,15 +1,18 @@
 #include <SoftwareSerial.h>
+#include <IRSignalSender.h>
 
 // Definition of digital pins:
 // slave Bluetooth socket to communicate with Master Device:
 // bluetooth module's TX goes to arduino's TX (in this case, pin 3).
-int pinBtTx = 3;
 int pinBtRx = 2;
-SoftwareSerial master(pinBtRx,pinBtTx);
-
+int pinBtTx = 3;
 int pinRelay = 4;
 int pinPIR = 5;
+int pinIRLed = 13;
 int pinLM35 = 0;
+
+SoftwareSerial master(pinBtRx,pinBtTx);
+IRSignalSender irSender(pinIRLed);
 
 bool booRelay = false;
 bool booPIR = false;
@@ -18,6 +21,7 @@ int tempCurrent = 0;
 int timeCurrent = 0;
 int timeLastEvent = 0;
 int timeDelayThreshold = 60000; // 60 seconds.
+int timeThreshold;
 
 void setup() {
   Serial.begin(9600);
@@ -25,9 +29,11 @@ void setup() {
   pinMode(pinRelay, OUTPUT);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
+  Serial.println("Beginning...");
 }
 
 void loop() {
+  /*
   booPIR = digitalRead(pinPIR);
   tempCurrent = ( (5.0 * analogRead(pinLM35)*100.0)/1024.0 );
   
@@ -42,4 +48,7 @@ void loop() {
   }
   
   master.println(tempCurrent);
+  */
+  irSender.sendCommand(1);
+  delay(3000);
 }
