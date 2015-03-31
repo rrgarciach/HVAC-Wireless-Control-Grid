@@ -15,6 +15,7 @@ IRSignalSender irSender(pinIRLed);
 
 bool booPIR = false;
 bool booQuietZone = false;
+bool hvacPower = true;
 
 uint16_t tempCurrent = 0;
 
@@ -31,10 +32,13 @@ void setup() {
 }
 
 void loop() {
-  // CREATE PAGE:
-  // Read temperature:
-  tempCurrent = ( (5.0 * analogRead(pinLM35)*100.0)/1024.0 );
+  generatePage();
+  react();
+  sendPageSerial();
+}
 
+// Function to update state's variables:
+void generatePage() {
   // PIR functionality:
   // check if movement:
   booPIR = digitalRead(pinPIR);
@@ -44,13 +48,34 @@ void loop() {
   timeElapsed = millis() - timestampLastEvent;
   // if time lapse is higher than the delay threshold, switch variable:
   booQuietZone = (timeElapsed > timeDelayThreshold) ? false : true;
-
-  // TURN ON command:
-//  irSender.sendCommand(1);
-//  delay(3000);
+  
+  // Temperature functionality:
+  // Read temperature:
+  tempCurrent = ( (5.0 * analogRead(pinLM35)*100.0)/1024.0 );
 }
 
-/*
-0 error
-1 
-*/
+// Function to react/trigger physical controls:
+void react() {
+  // turn off HVAC if quiet zone
+  if (true == booQuietZone) {
+    // send IR signal to HVAC device:
+    irSender.sendCommand(1);
+    // update HVAC state's variable:
+    hvacPower = true;
+  }
+}
+
+// Function to print serialized page:
+void sendPageSerial(SoftwareSerial stream) {
+  // send temperature:
+  stream.print(F("temp:"));
+  stream.print(tempCurrent);
+  // send quiet zone:
+  stream.print(F("quiet:"));
+  stream.print(booQuietZone);
+  // send HVAC power state:
+  stream.print(F("power:"));
+  stream.print(hvacPower);
+  // terminate serial line:
+  stream.println("");
+}
