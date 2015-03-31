@@ -18,43 +18,33 @@ bool booQuietZone = false;
 
 uint16_t tempCurrent = 0;
 
-uint16_t timeLastEvent = 0;
+uint16_t timestampLastEvent = 0;
 uint16_t timeDelayThreshold = 10000; // 60 seconds.
-uint16_t timeThreshold;
+uint16_t timeElapsed;
 
 void setup() {
   Serial.begin(9600);
   master.begin(38400);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
-  Serial.println("Beginning...");
+  Serial.println(F("Beginning..."));
 }
 
 void loop() {
-  
+  // CREATE PAGE:
+  // Read temperature:
   tempCurrent = ( (5.0 * analogRead(pinLM35)*100.0)/1024.0 );
 
-  // Check if movement:
+  // PIR functionality:
+  // check if movement:
   booPIR = digitalRead(pinPIR);
-  Serial.println(booPIR);
-  if ( booPIR ) {
-    timeLastEvent = millis();
-  }
-  timeThreshold = millis() - timeLastEvent;
-  if (timeThreshold > timeDelayThreshold) {
-    booQuietZone = true;
-    Serial.println("movement");
-  } else {
-    booQuietZone = false;
-    Serial.println("quiet");
-  }
-  
-  // If there's no movement after 60 seconds, send data to Master Device
-  if ( timeThreshold > timeDelayThreshold ) {
-    master.println("no_movement");
-  }
+  // if movement, store time stamp of event:
+  if (booPIR) timestampLastEvent = millis();
+  // get time lapse from the last event:
+  timeElapsed = millis() - timestampLastEvent;
+  // if time lapse is higher than the delay threshold, switch variable:
+  booQuietZone = (timeElapsed > timeDelayThreshold) ? false : true;
 
-  master.println(tempCurrent);
   // TURN ON command:
 //  irSender.sendCommand(1);
 //  delay(3000);
