@@ -31,14 +31,13 @@ void setup() {
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
   Serial.println(F("Beginning..."));
-  master.println(F("Beginning..."));
 }
 
 void loop() {
+  if (millis() % 1000 == 0) receiveCommands(master);
   if (millis() % 1000 == 0) updateStates();
   if (millis() % 1000 == 0) react();
   if (millis() % 10000 == 0) sendPageSerial(master);
-  if (millis() % 1000 == 0) receiveCommands(master);
   
 }
 
@@ -101,7 +100,6 @@ void receiveCommands(SoftwareSerial stream) {
       command += srl; //iterates char into string
     }
     if (command == "turnon") { //this compares catched string vs. expected command string
-      command = "";
       if (true == hvacPower) {
         master.println(F("already_on"));
       } else {
@@ -109,7 +107,6 @@ void receiveCommands(SoftwareSerial stream) {
         irSender.sendCommand(0);
       }
     } else if (command == "turnoff") { //this compares catched string vs. expected command string
-      command = "";
       if (false == hvacPower) {
         master.println(F("already_off"));
       } else {
