@@ -1,5 +1,5 @@
 /*
-The bluetooth's TX goes to arduino's TX (in this case, pin 5).
+For HC-05 the bluetooth's TX goes to arduino's TX (in this case, pin 5).
 */
 #include <SoftwareSerial.h>
 

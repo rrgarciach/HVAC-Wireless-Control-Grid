@@ -52,7 +52,7 @@ void setup() {
 
 void loop() {
   checkForScouts();
-  checkForMobiler();
+  checkForMobile();
   // listen for incoming clients
   checkForEthernet();
 }
@@ -118,7 +118,7 @@ void checkForScouts() {
   } else if ( message == "temperature" ) {}
 }
 
-void checkForMobiler() {
+void checkForMobile() {
   if ( mobile.available() ) {
     if ( mobile.available() ) {
     character = mobile.read();
