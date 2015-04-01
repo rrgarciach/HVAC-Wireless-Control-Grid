@@ -15,16 +15,17 @@ IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
 // Definition of digital pins:
+#define pinBtRxMobile 2
+#define pinBtTxMobile 3
+#define pinBtRxScout_01 5
+#define pinBtTxScout_01 6
+
 // slave Bluetooth socket to communicate with Mobile App:
-// bluetooth module's TX goes to arduino's TX (in this case, pin 3).
-int pinBtTxMobile = 3;
-int pinBtRxMobile = 2;
+// For HC-05 Bluetooth module's TX goes to arduino's TX (in this case, pin 3).
 SoftwareSerial mobile(pinBtRxMobile,pinBtTxMobile);
 // master Bluetooth socket to communicate with Scout Devices:
-// bluetooth module's TX goes to arduino's TX (in this case, pin 6).
-int pinBtTxScout_01 = 6;
-int pinBtRxScout_01 = 5;
 SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
+
 // String to process:
 String message;
 // variable to store received characters from Bluetooth devices:
