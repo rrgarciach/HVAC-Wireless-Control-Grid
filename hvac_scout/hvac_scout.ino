@@ -27,7 +27,7 @@ uint16_t timeElapsed;
 
 void setup() {
   Serial.begin(115200);
-  master.begin(38400);
+  master.begin(9600);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
   Serial.println(F("Beginning..."));
@@ -78,25 +78,30 @@ void sendPageSerial(SoftwareSerial stream) {
   // send temperature:
   stream.print(F("temp:"));
   stream.print(tempCurrent);
+  stream.print(F(";"));
   // send quiet zone:
   stream.print(F("quiet:"));
   stream.print(booQuietZone);
+  stream.print(F(";"));
   // send HVAC power state:
   stream.print(F("power:"));
   stream.print(hvacPower);
+  stream.print(F(";"));
   // terminate serial line:
   stream.println("");
 }
 
 void receiveCommands(SoftwareSerial stream) {
   if ( master.available() ) {
+    Serial.println(F("READING"));
     String command; //string to store entire command line
     while ( master.available() ) {
-      srl = stream.read();
+      srl = master.read();
       delay(50);
       command += srl; //iterates char into string
     }
     if (command == "turnon") { //this compares catched string vs. expected command string
+      command = "";
       if (true == hvacPower) {
         master.println(F("already_on"));
       } else {
@@ -104,6 +109,7 @@ void receiveCommands(SoftwareSerial stream) {
         irSender.sendCommand(0);
       }
     } else if (command == "turnoff") { //this compares catched string vs. expected command string
+      command = "";
       if (false == hvacPower) {
         master.println(F("already_off"));
       } else {
