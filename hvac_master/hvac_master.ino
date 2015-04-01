@@ -46,7 +46,7 @@ void setup() {
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
   server.begin();
-  Serial.print("server is at ");
+  Serial.print(F("server is at "));
   Serial.println(Ethernet.localIP());
 }
 
@@ -60,7 +60,7 @@ void loop() {
 void checkForEthernet() {
   EthernetClient client = server.available();
   if (client) {
-    Serial.println("new client");
+    Serial.println(F("new client"));
     // an HTTP request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
@@ -72,17 +72,17 @@ void checkForEthernet() {
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
           // send a standard HTTP response header
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: application/json");
-          client.println("Connection: close");  // the connection will be closed after completion of the response
+          client.println(F("HTTP/1.1 200 OK"));
+          client.println(F("Content-Type: application/json"));
+          client.println(F("Connection: close"));  // the connection will be closed after completion of the response
           //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
           client.println();
 
           // printing JSON response:
-          client.print("{");
-          client.print("\"tempZone01\":");
-          client.print(",");
-          client.print("}");
+          client.print(F("{"));
+          client.print(F("\"tempZone01\":"));
+          client.print(F(","));
+          client.print(F("}"));
 
           break;
         }
@@ -100,7 +100,7 @@ void checkForEthernet() {
     delay(1);
     // close the connection:
     client.stop();
-    Serial.println("client disconnected");
+    Serial.println(F("client disconnected"));
   }
 }
 
@@ -111,10 +111,10 @@ void checkForScouts() {
     delay(50);
     message += character;
   }
-  Serial.println("");
-  scout_01.println("");
+  Serial.println(F(""));
+  scout_01.println(F(""));
   if ( message == "no_movement" ) {
-    Serial.println("More than 60 seconds without movement.");
+    Serial.println(F("More than 60 seconds without movement."));
   } else if ( message == "temperature" ) {}
 }
 
