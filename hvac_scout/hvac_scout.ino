@@ -11,6 +11,8 @@
 #define pinLM35 0
 
 SoftwareSerial master(pinBtRx, pinBtTx);
+char srl = '0';
+
 IRSignalSender irSender(pinIRLed);
 
 bool booPIR = false;
@@ -20,25 +22,29 @@ bool hvacPower = true;
 uint16_t tempCurrent = 0;
 
 uint16_t timestampLastEvent = 0;
-uint16_t timeDelayThreshold = 10000; // 60 seconds.
+uint16_t timeDelayThreshold = 900000; // 900,000 seconds (15 minutes).
 uint16_t timeElapsed;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   master.begin(38400);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
   Serial.println(F("Beginning..."));
+  master.println(F("Beginning..."));
 }
 
 void loop() {
-  generatePage();
-  react();
-  sendPageSerial();
+  if (millis() % 1000 == 0) updateStates();
+  if (millis() % 1000 == 0) react();
+  if (millis() % 10000 == 0) sendPageSerial(master);
+  if (millis() % 1000 == 0) receiveCommands(master);
+  
 }
 
 // Function to update state's variables:
-void generatePage() {
+void updateStates() {
+  Serial.println(F("update states"));
   // PIR functionality:
   // check if movement:
   booPIR = digitalRead(pinPIR);
@@ -47,7 +53,7 @@ void generatePage() {
   // get time lapse from the last event:
   timeElapsed = millis() - timestampLastEvent;
   // if time lapse is higher than the delay threshold, switch variable:
-  booQuietZone = (timeElapsed > timeDelayThreshold) ? false : true;
+  booQuietZone = (timeElapsed > timeDelayThreshold) ? true : false;
   
   // Temperature functionality:
   // Read temperature:
@@ -56,6 +62,7 @@ void generatePage() {
 
 // Function to react/trigger physical controls:
 void react() {
+  Serial.println(F("reacting"));
   // turn off HVAC if quiet zone
   if (true == booQuietZone) {
     // send IR signal to HVAC device:
@@ -67,6 +74,7 @@ void react() {
 
 // Function to print serialized page:
 void sendPageSerial(SoftwareSerial stream) {
+  Serial.println(F("send page serial"));
   // send temperature:
   stream.print(F("temp:"));
   stream.print(tempCurrent);
@@ -78,4 +86,31 @@ void sendPageSerial(SoftwareSerial stream) {
   stream.print(hvacPower);
   // terminate serial line:
   stream.println("");
+}
+
+void receiveCommands(SoftwareSerial stream) {
+  if ( master.available() ) {
+    String command; //string to store entire command line
+    while ( master.available() ) {
+      srl = stream.read();
+      delay(50);
+      command += srl; //iterates char into string
+    }
+    if (command == "turnon") { //this compares catched string vs. expected command string
+      if (true == hvacPower) {
+        master.println(F("already_on"));
+      } else {
+        master.println(F("turning_on"));
+        irSender.sendCommand(0);
+      }
+    } else if (command == "turnoff") { //this compares catched string vs. expected command string
+      if (false == hvacPower) {
+        master.println(F("already_off"));
+      } else {
+        master.println(F("turning_off"));
+        irSender.sendCommand(1);
+      }
+    }
+  }
+  
 }
