@@ -73,7 +73,7 @@ void checkForEthernet() {
         if (c == '\n' && currentLineIsBlank) {
           // send a standard HTTP response header
           client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
+          client.println("Content-Type: application/json");
           client.println("Connection: close");  // the connection will be closed after completion of the response
           //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
           client.println();
