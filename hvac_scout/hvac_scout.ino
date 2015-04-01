@@ -4,6 +4,7 @@
 // Definition of digital pins:
 // slave Bluetooth socket to communicate with Master Device:
 // bluetooth module's TX goes to arduino's TX (in this case, pin 3).
+// in HC-06 pin 3 goes to BT's TX 
 #define pinBtRx 2
 #define pinBtTx 3
 #define pinPIR 4
@@ -17,16 +18,16 @@ IRSignalSender irSender(pinIRLed);
 
 bool booPIR = false;
 bool booQuietZone = false;
-bool hvacPower = true;
+bool hvacPower = false;
 
-uint16_t tempCurrent = 0;
+uint8_t tempCurrent = 0;
 
-uint16_t timestampLastEvent = 0;
-uint16_t timeDelayThreshold = 900000; // 900,000 seconds (15 minutes).
-uint16_t timeElapsed;
+uint32_t timestampLastEvent = 0;
+uint32_t timeDelayThreshold = 900000; // 900 seconds (15 minutes).
+uint32_t timeElapsed;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   master.begin(9600);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
@@ -34,11 +35,10 @@ void setup() {
 }
 
 void loop() {
-  if (millis() % 1000 == 0) receiveCommands(master);
-  if (millis() % 1000 == 0) updateStates();
-  if (millis() % 1000 == 0) react();
-  if (millis() % 10000 == 0) sendPageSerial(master);
-  
+  if (millis() % 1000 == 0) receiveCommands();
+  if (millis() % 10000 == 0) updateStates();
+  if (millis() % 10000 == 0) react();
+  if (millis() % 10000 == 0) sendPageSerial();
 }
 
 // Function to update state's variables:
@@ -63,57 +63,87 @@ void updateStates() {
 void react() {
   Serial.println(F("reacting"));
   // turn off HVAC if quiet zone
-  if (true == booQuietZone) {
-    // send IR signal to HVAC device:
-    irSender.sendCommand(1);
-    // update HVAC state's variable:
-    hvacPower = true;
-  }
+  if (true == booQuietZone && true == hvacPower) turnOffHvac();
 }
 
 // Function to print serialized page:
-void sendPageSerial(SoftwareSerial stream) {
-  Serial.println(F("send page serial"));
+void sendPageSerial() {
+  Serial.println(F("sending page serial"));
   // send temperature:
-  stream.print(F("temp:"));
-  stream.print(tempCurrent);
-  stream.print(F(";"));
+  master.print(F("temp:"));
+  master.print(tempCurrent);
+  master.print(F(";"));
   // send quiet zone:
-  stream.print(F("quiet:"));
-  stream.print(booQuietZone);
-  stream.print(F(";"));
+  master.print(F("quiet:"));
+  master.print(booQuietZone);
+  master.print(F(";"));
   // send HVAC power state:
-  stream.print(F("power:"));
-  stream.print(hvacPower);
-  stream.print(F(";"));
+  master.print(F("power:"));
+  master.print(hvacPower);
+  master.print(F(";"));
   // terminate serial line:
-  stream.println("");
+  master.println("");
 }
 
-void receiveCommands(SoftwareSerial stream) {
+void receiveCommands() {
   if ( master.available() ) {
-    Serial.println(F("READING"));
+    Serial.println(F("reading from master"));
     String command; //string to store entire command line
     while ( master.available() ) {
       srl = master.read();
       delay(50);
       command += srl; //iterates char into string
-    }
-    if (command == "turnon") { //this compares catched string vs. expected command string
-      if (true == hvacPower) {
-        master.println(F("already_on"));
-      } else {
-        master.println(F("turning_on"));
-        irSender.sendCommand(0);
+      
+      if (command == "turn_on;") { //this compares catched string vs. expected command string
+        turnOnHvac();
+      } else if (command == "turn_off;") { //this compares catched string vs. expected command string
+        turnOffHvac();
+      } else if (command == "delay_time:") { //this compares catched string vs. expected command string
+        changeDelayTime();
       }
-    } else if (command == "turnoff") { //this compares catched string vs. expected command string
-      if (false == hvacPower) {
-        master.println(F("already_off"));
-      } else {
-        master.println(F("turning_off"));
-        irSender.sendCommand(1);
-      }
+      
     }
   }
-  
+}
+
+void turnOnHvac() {
+  if (true == hvacPower) {
+    master.println(F("already_on;"));
+  } else {
+    master.println(F("turning_on;"));
+    // send IR signal to HVAC device:
+    irSender.sendCommand(0);
+    // update HVAC state's variable:
+    hvacPower = true;
+  }
+}
+
+void turnOffHvac() {
+  if (false == hvacPower) {
+    master.println(F("already_off;"));
+  } else {
+    master.println(F("turning_off;"));
+    // send IR signal to HVAC device:
+    irSender.sendCommand(1);
+    // update HVAC state's variable:
+    hvacPower = false;
+  }
+}
+
+void changeDelayTime() {
+  while ( !master.available() ) {}
+  String strValue; //string to store entire command line
+  if ( master.available() ) {
+    while ( master.available() ) {
+      srl = master.read();
+      if (srl == ';') break;
+      strValue += srl; //iterates char into string
+      delay(50);
+    }
+  }
+  timeDelayThreshold = strValue.toInt();
+  timeDelayThreshold *= 1000;
+  master.print(F("delay_time:"));
+  master.println(timeDelayThreshold / 1000);
+  delay(50);
 }
