@@ -15,10 +15,10 @@ IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
 // Definition of digital pins:
-#define pinBtRxMobile 2
-#define pinBtTxMobile 3
-#define pinBtRxScout_01 5
-#define pinBtTxScout_01 6
+#define pinBtRxMobile 6
+#define pinBtTxMobile 5
+#define pinBtRxScout_01 3
+#define pinBtTxScout_01 2
 
 // slave Bluetooth socket to communicate with Mobile App:
 // For HC-05 Bluetooth module's TX goes to arduino's TX (in this case, pin 3).
@@ -38,11 +38,11 @@ void setup() {
   
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-  mobile.begin(38400);
-  scout_01.begin(38400);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
+  mobile.begin(9600);
+  scout_01.begin(9600);
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for Leonardo only
+//  }
   
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
