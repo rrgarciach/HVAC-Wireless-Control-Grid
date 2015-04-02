@@ -26,10 +26,14 @@ SoftwareSerial mobile(pinBtRxMobile,pinBtTxMobile);
 // master Bluetooth socket to communicate with Scout Devices:
 SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
 
-// String to process:
-String message;
 // variable to store received characters from Bluetooth devices:
-char character;
+char srl;
+
+// scout's state variables:
+uint8_t scout_01_temp = 0;
+uint32_t scout_01_delay_time = 0;
+bool scout_01_quiet = false;
+bool scout_01_power = false;
 
 void setup() {
   // The next two lines are to avoid the board from hanging after some requests:
@@ -59,6 +63,7 @@ void loop() {
 }
 
 void checkForEthernet() {
+//  Serial.print(F("checkForEthernet"));
   EthernetClient client = server.available();
   if (client) {
     Serial.println(F("new client"));
@@ -81,8 +86,22 @@ void checkForEthernet() {
 
           // printing JSON response:
           client.print(F("{"));
-          client.print(F("\"tempZone01\":"));
+          // print temperature:
+          client.print(F("\"scout_01_temp\":"));
+          client.print(scout_01_temp);
           client.print(F(","));
+          // print quiet zone:
+          client.print(F("\"scout_01_quiet\":"));
+          client.print(scout_01_quiet);
+          client.print(F(","));
+          // print power status:
+          client.print(F("\"scout_01_power\":"));
+          client.print(scout_01_power);
+          client.print(F(","));
+          // print delay time:
+          client.print(F("\"scout_01_delay_time\":"));
+          client.print(scout_01_delay_time);
+//          client.print(F(","));
           client.print(F("}"));
 
           break;
@@ -106,27 +125,131 @@ void checkForEthernet() {
 }
 
 void checkForScouts() {
+//  Serial.println(F("checkForScouts"));
+//  while ( !scout_01.available() ) {}
+  String message; // String to process:
   if ( scout_01.available() ) {
-    character = scout_01.read();
-    Serial.print(character);
-    delay(50);
-    message += character;
+    while ( scout_01.available() ) {
+      srl = scout_01.read();
+      Serial.print(srl);
+      delay(50);
+      message += srl;
+//      if ( message == "data:" ) {
+//        Serial.println(F("reading data:"));
+//        while ( scout_01.available() ) {
+          
+//          message = "";
+//          srl = scout_01.read();
+//          Serial.print(srl);
+//          delay(50);
+//          message += srl;
+          if ( message == "data:" ) {
+            Serial.println();
+            Serial.println(F("reading data:"));
+            message = "";
+          }
+          if ( message == "temp:" ) {
+            scout_01_ReadTemp();
+            message = "";
+          }
+          if ( message == "delay_time:" ) {
+            scout_01_ReadDelayTime();
+            message = "";
+          }
+          if ( message == "quiet:" ) {
+            scout_01_ReadQuiet();
+            message = "";
+          }
+          if ( message == "power:" ) {
+            scout_01_ReadPower();
+            message = "";
+          }
+//        }
+//      }
+    }
   }
-  Serial.println(F(""));
-  scout_01.println(F(""));
-  if ( message == "no_movement" ) {
-    Serial.println(F("More than 60 seconds without movement."));
-  } else if ( message == "temperature" ) {}
 }
 
 void checkForMobile() {
+  Serial.println(F("checkForMobile"));
   if ( mobile.available() ) {
     if ( mobile.available() ) {
-    character = mobile.read();
-    Serial.print(character);
-    delay(50);
+      srl = mobile.read();
+      Serial.print(srl);
+      delay(50);
+    }
   }
-  Serial.println("");
-  mobile.println("");
+}
+
+void scout_01_ReadTemp() {
+  Serial.println(F("readTemp..."));
+//  while ( !scout_01.available() ) {}
+  String strValue; //string to store entire command line
+  if ( scout_01.available() ) {
+    while ( scout_01.available() ) {
+      srl = scout_01.read();
+      if (srl == ';') break;
+      strValue += srl; //iterates char into string
+      delay(50);
+    }
   }
+  scout_01_temp = strValue.toInt();
+  Serial.print(F("scout_01_temp: "));
+  Serial.println(scout_01_temp);
+  delay(50);
+}
+
+void scout_01_ReadDelayTime() {
+  Serial.println(F("readDelayTime..."));
+//  while ( !serial.available() ) {}
+  String strValue; //string to store entire command line
+  if ( scout_01.available() ) {
+    while ( scout_01.available() ) {
+      srl = scout_01.read();
+      if (srl == ';') break;
+      strValue += srl; //iterates char into string
+      delay(50);
+    }
+  }
+  scout_01_delay_time = strValue.toInt();
+  scout_01_delay_time *= 1000;
+  Serial.print(F("scout_01_delay_time: "));
+  Serial.println(scout_01_delay_time);
+  delay(50);
+}
+
+void scout_01_ReadQuiet() {
+  Serial.println(F("readQuiet..."));
+//  while ( !serial.available() ) {}
+  String strValue; //string to store entire command line
+  if ( scout_01.available() ) {
+    while ( scout_01.available() ) {
+      srl = scout_01.read();
+      if (srl == ';') break;
+      strValue += srl; //iterates char into string
+      delay(50);
+    }
+  }
+  scout_01_quiet = strValue.toInt();
+  Serial.print(F("scout_01_quiet: "));
+  Serial.println(scout_01_quiet);
+  delay(50);
+}
+
+void scout_01_ReadPower() {
+  Serial.println(F("readPower..."));
+//  while ( !serial.available() ) {}
+  String strValue; //string to store entire command line
+  if ( scout_01.available() ) {
+    while ( scout_01.available() ) {
+      srl = scout_01.read();
+      if (srl == ';') break;
+      strValue += srl; //iterates char into string
+      delay(50);
+    }
+  }
+  scout_01_power = strValue.toInt();
+  Serial.print(F("scout_01_power: "));
+  Serial.println(scout_01_power);
+  delay(50);
 }
