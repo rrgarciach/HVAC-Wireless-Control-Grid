@@ -36,7 +36,7 @@ void setup() {
 
 void loop() {
   if (millis() % 1000 == 0) receiveCommands();
-  if (millis() % 10000 == 0) updateStates();
+  if (millis() % 1000 == 0) updateStates();
   if (millis() % 10000 == 0) react();
   if (millis() % 10000 == 0) sendPageSerial();
 }
@@ -69,9 +69,14 @@ void react() {
 // Function to print serialized page:
 void sendPageSerial() {
   Serial.println(F("sending page serial"));
+  master.print(F("data:"));
   // send temperature:
   master.print(F("temp:"));
   master.print(tempCurrent);
+  master.print(F(";"));
+  // send delaytime:
+  master.print(F("delay_time:"));
+  master.println(timeDelayThreshold / 1000);
   master.print(F(";"));
   // send quiet zone:
   master.print(F("quiet:"));
