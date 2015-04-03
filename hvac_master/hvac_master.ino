@@ -134,44 +134,33 @@ void checkForScouts() {
       Serial.print(srl);
       delay(50);
       message += srl;
-//      if ( message == "data:" ) {
-//        Serial.println(F("reading data:"));
-//        while ( scout_01.available() ) {
-          
-//          message = "";
-//          srl = scout_01.read();
-//          Serial.print(srl);
-//          delay(50);
-//          message += srl;
-          if ( message == "data:" ) {
-            Serial.println();
-            Serial.println(F("reading data:"));
-            message = "";
-          }
-          if ( message == "temp:" ) {
-            scout_01_ReadTemp();
-            message = "";
-          }
-          if ( message == "delay_time:" ) {
-            scout_01_ReadDelayTime();
-            message = "";
-          }
-          if ( message == "quiet:" ) {
-            scout_01_ReadQuiet();
-            message = "";
-          }
-          if ( message == "power:" ) {
-            scout_01_ReadPower();
-            message = "";
-          }
-//        }
-//      }
+      if ( message == "data:" ) {
+        Serial.println();
+        Serial.println(F("reading data:"));
+        message = "";
+      }
+      if ( message == "temp:" ) {
+        readTemp(scout_01);
+        message = "";
+      }
+      if ( message == "delay_time:" ) {
+        readDelayTime(scout_01);
+        message = "";
+      }
+      if ( message == "quiet:" ) {
+        readQuiet(scout_01);
+        message = "";
+      }
+      if ( message == "power:" ) {
+        readPower(scout_01);
+        message = "";
+      }
     }
   }
 }
 
 void checkForMobile() {
-  Serial.println(F("checkForMobile"));
+//  Serial.println(F("checkForMobile"));
   if ( mobile.available() ) {
     if ( mobile.available() ) {
       srl = mobile.read();
@@ -181,13 +170,13 @@ void checkForMobile() {
   }
 }
 
-void scout_01_ReadTemp() {
+void readTemp(SoftwareSerial &serial) {
   Serial.println(F("readTemp..."));
 //  while ( !scout_01.available() ) {}
   String strValue; //string to store entire command line
-  if ( scout_01.available() ) {
-    while ( scout_01.available() ) {
-      srl = scout_01.read();
+  if ( serial.available() ) {
+    while ( serial.available() ) {
+      srl = serial.read();
       if (srl == ';') break;
       strValue += srl; //iterates char into string
       delay(50);
@@ -199,7 +188,7 @@ void scout_01_ReadTemp() {
   delay(50);
 }
 
-void scout_01_ReadDelayTime() {
+void readDelayTime(SoftwareSerial &serial) {
   Serial.println(F("readDelayTime..."));
 //  while ( !serial.available() ) {}
   String strValue; //string to store entire command line
@@ -218,7 +207,7 @@ void scout_01_ReadDelayTime() {
   delay(50);
 }
 
-void scout_01_ReadQuiet() {
+void readQuiet(SoftwareSerial &serial) {
   Serial.println(F("readQuiet..."));
 //  while ( !serial.available() ) {}
   String strValue; //string to store entire command line
@@ -236,7 +225,7 @@ void scout_01_ReadQuiet() {
   delay(50);
 }
 
-void scout_01_ReadPower() {
+void readPower(SoftwareSerial &serial) {
   Serial.println(F("readPower..."));
 //  while ( !serial.available() ) {}
   String strValue; //string to store entire command line
