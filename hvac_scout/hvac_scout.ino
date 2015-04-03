@@ -62,7 +62,8 @@ void updateStates() {
   booQuietZone = (timeElapsed > timeDelayThreshold) ? true : false;
   
 //  currentVal = emon1.calcIrms(1480);  // Calculate Irms only (current sensor)
-//  power = (currentVal > 1) ? true : false;
+//  int Amps = currentVal*230.0;
+//  power = (Amps > 1) ? true : false;
   
   // Temperature functionality:
   // Read temperature:
