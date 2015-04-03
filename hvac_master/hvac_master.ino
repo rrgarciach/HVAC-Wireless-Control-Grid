@@ -1,12 +1,18 @@
+/*
+Note:
+Not all pins on the Mega and Mega 2560 support change interrupts, 
+so only the following can be used for RX: 
+10, 11, 12, 13, 14, 15, 50**, 51**, 52**, 53**, A8 (62), A9 (63), A10 (64), 
+A11 (65), A12 (66), A13 (67), A14 (68), A15 (69).
+**These pins are been used by Ethernet Shield.
+*/
 #include <SPI.h>
 #include <Ethernet.h>
 #include <SoftwareSerial.h>
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 177);
 
 // Initialize the Ethernet server library
@@ -15,10 +21,40 @@ IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
 // Definition of digital pins:
+#define pin222AScout_01 2
+#define pinKEYScout_01 3
+#define pinSSD 4
+#if defined(__AVR_ATmega328P__) // this is Uno
 #define pinBtRxMobile 6
 #define pinBtTxMobile 5
-#define pinBtRxScout_01 3
-#define pinBtTxScout_01 2
+#define pinBtRxScout_01 8
+#define pinBtTxScout_01 7
+#elif defined(__AVR_ATmega2560__) // this is mega
+#define pinBtRxMobile 10
+#define pinBtTxMobile 22
+#define pinBtRxScout_01 11
+#define pinBtTxScout_01 23
+#define pinBtRxScout_02 12
+#define pinBtTxScout_02 24
+#define pinBtRxScout_03 13
+#define pinBtTxScout_03 25
+#define pinBtRxScout_04 62
+#define pinBtTxScout_04 26
+#define pinBtRxScout_05 63
+#define pinBtTxScout_05 27
+#define pinBtRxScout_06 64
+#define pinBtTxScout_06 28
+#define pinBtRxScout_07 65
+#define pinBtTxScout_07 29
+#define pinBtRxScout_08 66
+#define pinBtTxScout_08 30
+#define pinBtRxScout_09 67
+#define pinBtTxScout_09 31
+#define pinBtRxScout_10 68
+#define pinBtTxScout_10 32
+#else // everything else
+#error "unknown MCU"
+#endif
 
 // slave Bluetooth socket to communicate with Mobile App:
 // For HC-05 Bluetooth module's TX goes to arduino's TX (in this case, pin 3).
@@ -30,19 +66,58 @@ SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
 char srl;
 
 // scout's state variables:
+// scout 01
+String scout_01_name = "Scout01";
 uint8_t scout_01_temp = 0;
 uint32_t scout_01_delay_time = 0;
 bool scout_01_quiet = false;
 bool scout_01_power = false;
+// scout 02
+String scout_02_name = "Scout02";
+uint8_t scout_02_temp = 0;
+uint32_t scout_02_delay_time = 0;
+bool scout_02_quiet = false;
+bool scout_02_power = false;
+// scout 03
+String scout_03_name = "Scout03";
+uint8_t scout_03_temp = 0;
+uint32_t scout_03_delay_time = 0;
+bool scout_03_quiet = false;
+bool scout_03_power = false;
+// scout 04
+String scout_04_name = "Scout04";
+uint8_t scout_04_temp = 0;
+uint32_t scout_04_delay_time = 0;
+bool scout_04_quiet = false;
+bool scout_04_power = false;
 
 void setup() {
   // The next two lines are to avoid the board from hanging after some requests:
-  pinMode(4, OUTPUT);
-  digitalWrite(4, HIGH);
+  pinMode(pinSSD, OUTPUT);
+  digitalWrite(pinSSD, HIGH);
   
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
   mobile.begin(9600);
+  scout_01.begin(38400);
+  pinMode(pin222AScout_01, OUTPUT);
+  pinMode(pinKEYScout_01, OUTPUT);
+  Serial.println(F("Starting SPP"));
+  digitalWrite(pin222AScout_01, LOW);
+  digitalWrite(pinKEYScout_01, HIGH);
+  digitalWrite(pin222AScout_01, HIGH);
+  delay(500);
+  scout_01.println("AT");
+  delay(500);
+  scout_01.println("AT+INIT");
+  delay(1000);
+  digitalWrite(pin222AScout_01, LOW);
+  delay(500);
+  digitalWrite(pinKEYScout_01, LOW);
+  digitalWrite(pin222AScout_01, HIGH);
+  Serial.println(F("Starting Serial"));
+  scout_01.end();
+  delay(500);
   scout_01.begin(9600);
 //  while (!Serial) {
 //    ; // wait for serial port to connect. Needed for Leonardo only
@@ -85,7 +160,15 @@ void checkForEthernet() {
           client.println();
 
           // printing JSON response:
+          client.print(F("["));
+          
+          // print scout01:
           client.print(F("{"));
+          // print name:
+          client.print(F("\"name\":"));
+          client.print(F("\""));
+          client.print(scout_01_name);
+          client.print(F("\","));
           // print temperature:
           client.print(F("\"scout_01_temp\":"));
           client.print(scout_01_temp);
@@ -101,8 +184,35 @@ void checkForEthernet() {
           // print delay time:
           client.print(F("\"scout_01_delay_time\":"));
           client.print(scout_01_delay_time);
-//          client.print(F(","));
           client.print(F("}"));
+          
+          client.print(F(","));
+          
+          // print scout02:
+          client.print(F("{"));
+          // print name:
+          client.print(F("\"name\":"));
+          client.print(F("\""));
+          client.print(scout_02_name);
+          client.print(F("\","));
+          // print temperature:
+          client.print(F("\"scout_02_temp\":"));
+          client.print(scout_02_temp);
+          client.print(F(","));
+          // print quiet zone:
+          client.print(F("\"scout_02_quiet\":"));
+          client.print(scout_02_quiet);
+          client.print(F(","));
+          // print power status:
+          client.print(F("\"scout_02_power\":"));
+          client.print(scout_02_power);
+          client.print(F(","));
+          // print delay time:
+          client.print(F("\"scout_02_delay_time\":"));
+          client.print(scout_02_delay_time);
+          client.print(F("}"));
+          
+          client.print(F("]"));
 
           break;
         }
