@@ -1,5 +1,6 @@
 #include <SoftwareSerial.h>
 #include <IRSignalSender.h>
+//#include "EmonLib.h" // Include Emon Library (current sensor)
 
 // Definition of digital pins:
 // slave Bluetooth socket to communicate with Master Device:
@@ -10,11 +11,16 @@
 #define pinPIR 4
 #define pinIRLed 13
 #define pinLM35 0
+#define pinCurrent 1
 
 SoftwareSerial master(pinBtRx, pinBtTx);
 char srl = '0';
 
 IRSignalSender irSender(pinIRLed);
+
+//EnergyMonitor emon1; // Create an instance (current sensor)
+
+uint8_t currentVal = 0;
 
 bool booPIR = false;
 bool booQuietZone = false;
@@ -31,6 +37,7 @@ void setup() {
   master.begin(9600);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
+//  emon1.current(pinCurrent, 6.7); // Current: input pin, calibration (current sensor)
   Serial.println(F("Beginning..."));
 }
 
@@ -53,6 +60,9 @@ void updateStates() {
   timeElapsed = millis() - timestampLastEvent;
   // if time lapse is higher than the delay threshold, switch variable:
   booQuietZone = (timeElapsed > timeDelayThreshold) ? true : false;
+  
+//  currentVal = emon1.calcIrms(1480);  // Calculate Irms only (current sensor)
+//  power = (currentVal > 1) ? true : false;
   
   // Temperature functionality:
   // Read temperature:
