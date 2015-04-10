@@ -140,6 +140,7 @@ void loop() {
 void checkForEthernet() {
 //  Serial.print(F("checkForEthernet"));
   EthernetClient client = server.available();
+  String message;
   if (client) {
     Serial.println(F("new client"));
     // an HTTP request ends with a blank line
@@ -148,71 +149,32 @@ void checkForEthernet() {
       if (client.available()) {
         char c = client.read();
         Serial.write(c);
+        message += c;
+//        Serial.print(message);
+        // GET verb received:
+//        Serial.println(F("evaluating verb:"));
+        if (message == "GET") {
+          readGET(client);
+        } else if (message == "POST") {
+        }
+        
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
           // send a standard HTTP response header
-          client.println(F("HTTP/1.1 200 OK"));
-          client.println(F("Content-Type: application/json"));
-          client.println(F("Connection: close"));  // the connection will be closed after completion of the response
-          //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
-          client.println();
+//          client.println(F("HTTP/1.1 200 OK"));
+//          client.println(F("Content-Type: application/json"));
+//          client.println(F("Connection: close"));  // the connection will be closed after completion of the response
+//          //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+//          client.println();
 
           // printing JSON response:
-          client.print(F("["));
-          
-          // print scout01:
-          client.print(F("{"));
-          // print name:
-          client.print(F("\"name\":"));
-          client.print(F("\""));
-          client.print(scout_01_name);
-          client.print(F("\","));
-          // print temperature:
-          client.print(F("\"scout_01_temp\":"));
-          client.print(scout_01_temp);
-          client.print(F(","));
-          // print quiet zone:
-          client.print(F("\"scout_01_quiet\":"));
-          client.print(scout_01_quiet);
-          client.print(F(","));
-          // print power status:
-          client.print(F("\"scout_01_power\":"));
-          client.print(scout_01_power);
-          client.print(F(","));
-          // print delay time:
-          client.print(F("\"scout_01_delay_time\":"));
-          client.print(scout_01_delay_time);
-          client.print(F("}"));
-          
-          client.print(F(","));
-          
-          // print scout02:
-          client.print(F("{"));
-          // print name:
-          client.print(F("\"name\":"));
-          client.print(F("\""));
-          client.print(scout_02_name);
-          client.print(F("\","));
-          // print temperature:
-          client.print(F("\"scout_02_temp\":"));
-          client.print(scout_02_temp);
-          client.print(F(","));
-          // print quiet zone:
-          client.print(F("\"scout_02_quiet\":"));
-          client.print(scout_02_quiet);
-          client.print(F(","));
-          // print power status:
-          client.print(F("\"scout_02_power\":"));
-          client.print(scout_02_power);
-          client.print(F(","));
-          // print delay time:
-          client.print(F("\"scout_02_delay_time\":"));
-          client.print(scout_02_delay_time);
-          client.print(F("}"));
-          
-          client.print(F("]"));
+//          client.print(F("["));
+//          printJSON_scout01(client);
+//          client.print(F(","));
+//          printJSON_scout02(client);
+//          client.print(F("]"));
 
           break;
         }
@@ -351,4 +313,194 @@ void readPower(SoftwareSerial &serial) {
   Serial.print(F("scout_01_power: "));
   Serial.println(scout_01_power);
   delay(50);
+}
+
+void readGET(EthernetClient &client) {
+  Serial.print(F("\nreading GET verbs"));
+  if ( client.available() ) {
+//    Serial.println(F("searching for \"?\" sign"));
+    String message; // String to process:
+    while ( client.available() ) {
+      srl = client.read();
+      delay(50);
+      Serial.print(srl);
+      if (srl == '/') {
+        message = "/";
+        while ( client.available() ) {
+          srl = client.read();
+          delay(50);
+          Serial.print(srl);
+          message += srl;
+          // read GET variables
+          if ( message == "/01" ) {
+            Serial.println(F("reading scout01"));
+            printHeaders(client);
+            printJSON_scout01(client);
+            return;
+          } else if ( message == "/02" ) {
+            Serial.println(F("reading scout02"));
+            printHeaders(client);
+            printJSON_scout02(client);
+            return;
+          } else if ( message == "/03" ) {
+    //          printJSON_scout03(client);
+          } else if ( message == "/04" ) {
+    //          printJSON_scout04(client);
+          } else if ( message == "/05" ) {
+          } else if ( message == "/06" ) {
+          } else if ( message == "/07" ) {
+          } else if ( message == "/08" ) {
+          } else if ( message == "/09" ) {
+          } else if ( message == "/10" ) {
+          } else if ( message == "/11" ) {
+          } else if ( message == "/12" ) {
+          } else if ( message == "/ " ) {
+            // printing JSON response:
+            Serial.println(F("reading all scouts"));
+            printHeaders(client);
+            client.print(F("["));
+            printJSON_scout01(client);
+            client.print(F(","));
+            printJSON_scout02(client);
+            client.print(F("]"));
+            return;
+          } else if ( message.length() > 3) {
+            Serial.println(F("No more recognized parameters."));
+            return;
+          }
+        } // end while
+      }
+        
+    }
+  }
+}
+
+void readPOST(EthernetClient &client) {
+  if ( client.available() ) {
+    Serial.println(F("searching for \"?\" sign"));
+    String message; // String to process:
+    while ( client.available() ) {
+      srl = client.read();
+      delay(50);
+      message += srl;
+      if (srl == '/') {
+        while ( client.available() ) {
+          srl = client.read();
+          delay(50);
+          message += srl;
+          // read GET variables
+          if ( message == "01" ) {
+            Serial.println(F("reading scout01"));
+            printJSON_scout01(client);
+          } else if ( message == "02" ) {
+            Serial.println(F("reading scout02"));
+            printJSON_scout02(client);
+          } else if ( message == "03" ) {
+    //          printJSON_scout03(client);
+          } else if ( message == "04" ) {
+    //          printJSON_scout04(client);
+          } else if ( message == "05" ) {
+          } else if ( message == "06" ) {
+          } else if ( message == "07" ) {
+          } else if ( message == "08" ) {
+          } else if ( message == "09" ) {
+          } else if ( message == "10" ) {
+          } else if ( message == "11" ) {
+          } else if ( message == "12" ) {
+          } else if ( message == " " ) {
+            // printing JSON response:
+            Serial.println(F("reading all scouts"));
+            client.print(F("["));
+            printJSON_scout01(client);
+            client.print(F(","));
+            printJSON_scout02(client);
+            client.print(F("]"));
+          } else {
+            Serial.println(F("Something has going wrong while trying to read GET parameters."));
+          }
+        } // end while
+      }
+        
+    }
+  }
+}
+
+void readGETIndex(SoftwareSerial &serial) {
+  Serial.println(F("readTemp..."));
+//  while ( !scout_01.available() ) {}
+  String strValue; //string to store entire command line
+  if ( serial.available() ) {
+    while ( serial.available() ) {
+      srl = serial.read();
+      if (srl == ';') break;
+      strValue += srl; //iterates char into string
+      delay(50);
+    }
+  }
+  scout_01_temp = strValue.toInt();
+  Serial.print(F("scout_01_temp: "));
+  Serial.println(scout_01_temp);
+  delay(50);
+}
+
+void printHeaders(EthernetClient &client) {
+  // send a standard HTTP response header
+  client.println(F("HTTP/1.1 200 OK"));
+  client.println(F("Content-Type: application/json"));
+  client.println(F("Connection: close"));  // the connection will be closed after completion of the response
+  //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+  client.println();
+}
+
+
+void printJSON_scout01(EthernetClient &client) {
+  // print scout01:
+  client.print(F("{"));
+  // print name:
+  client.print(F("\"name\":"));
+  client.print(F("\""));
+  client.print(scout_01_name);
+  client.print(F("\","));
+  // print temperature:
+  client.print(F("\"scout_01_temp\":"));
+  client.print(scout_01_temp);
+  client.print(F(","));
+  // print quiet zone:
+  client.print(F("\"scout_01_quiet\":"));
+  client.print(scout_01_quiet);
+  client.print(F(","));
+  // print power status:
+  client.print(F("\"scout_01_power\":"));
+  client.print(scout_01_power);
+  client.print(F(","));
+  // print delay time:
+  client.print(F("\"scout_01_delay_time\":"));
+  client.print(scout_01_delay_time);
+  client.print(F("}"));
+}
+
+void printJSON_scout02(EthernetClient &client) {
+  // print scout02:
+  client.print(F("{"));
+  // print name:
+  client.print(F("\"name\":"));
+  client.print(F("\""));
+  client.print(scout_02_name);
+  client.print(F("\","));
+  // print temperature:
+  client.print(F("\"scout_02_temp\":"));
+  client.print(scout_02_temp);
+  client.print(F(","));
+  // print quiet zone:
+  client.print(F("\"scout_02_quiet\":"));
+  client.print(scout_02_quiet);
+  client.print(F(","));
+  // print power status:
+  client.print(F("\"scout_02_power\":"));
+  client.print(scout_02_power);
+  client.print(F(","));
+  // print delay time:
+  client.print(F("\"scout_02_delay_time\":"));
+  client.print(scout_02_delay_time);
+  client.print(F("}"));
 }
