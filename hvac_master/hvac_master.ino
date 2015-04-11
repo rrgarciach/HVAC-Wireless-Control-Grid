@@ -156,7 +156,9 @@ void checkForEthernet() {
         if (message == "GET") {
           readGET(client);
         } else if (message == "POST") {
+          readPOST(client);
         }
+        if (!client.available()) break;
         
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
@@ -180,7 +182,7 @@ void checkForEthernet() {
         }
         if (c == '\n') {
           // you're starting a new line
-          currentLineIsBlank = true;
+//          currentLineIsBlank = true;
         }
         else if (c != '\r') {
           // you've gotten a character on the current line
@@ -192,7 +194,7 @@ void checkForEthernet() {
     delay(1);
     // close the connection:
     client.stop();
-    Serial.println(F("client disconnected"));
+    Serial.println(F("\nclient disconnected"));
   }
 }
 
@@ -316,9 +318,8 @@ void readPower(SoftwareSerial &serial) {
 }
 
 void readGET(EthernetClient &client) {
-  Serial.print(F("\nreading GET verbs"));
+  Serial.print(F("\nreading GET verb"));
   if ( client.available() ) {
-//    Serial.println(F("searching for \"?\" sign"));
     String message; // String to process:
     while ( client.available() ) {
       srl = client.read();
@@ -376,47 +377,50 @@ void readGET(EthernetClient &client) {
 }
 
 void readPOST(EthernetClient &client) {
+  Serial.print(F("\nreading POST verb"));
   if ( client.available() ) {
-    Serial.println(F("searching for \"?\" sign"));
     String message; // String to process:
+    bool currentLineIsBlank = true;
     while ( client.available() ) {
       srl = client.read();
-      delay(50);
+//      delay(50);
+      Serial.print(srl);
       message += srl;
-      if (srl == '/') {
+      if (srl == '\n') {
+        currentLineIsBlank = true; // you're starting a new line
+      }
+      else if (srl != '\r') {
+        currentLineIsBlank = false;// you've gotten a character on the current line
+      }
+      if (srl == '\r' && currentLineIsBlank) {
+        message = "";
+        Serial.print(F("POST detected!"));
         while ( client.available() ) {
           srl = client.read();
-          delay(50);
+          if (srl == '&' || srl == '\n' || srl == '\r') {
+            message = "";
+            Serial.print(srl);
+            continue;
+          }
+//          delay(50);
+          Serial.println(message);
           message += srl;
           // read GET variables
-          if ( message == "01" ) {
-            Serial.println(F("reading scout01"));
-            printJSON_scout01(client);
-          } else if ( message == "02" ) {
-            Serial.println(F("reading scout02"));
-            printJSON_scout02(client);
-          } else if ( message == "03" ) {
-    //          printJSON_scout03(client);
-          } else if ( message == "04" ) {
-    //          printJSON_scout04(client);
-          } else if ( message == "05" ) {
-          } else if ( message == "06" ) {
-          } else if ( message == "07" ) {
-          } else if ( message == "08" ) {
-          } else if ( message == "09" ) {
-          } else if ( message == "10" ) {
-          } else if ( message == "11" ) {
-          } else if ( message == "12" ) {
-          } else if ( message == " " ) {
-            // printing JSON response:
-            Serial.println(F("reading all scouts"));
-            client.print(F("["));
-            printJSON_scout01(client);
-            client.print(F(","));
-            printJSON_scout02(client);
-            client.print(F("]"));
-          } else {
-            Serial.println(F("Something has going wrong while trying to read GET parameters."));
+          if ( message == "power=on" ) {
+            Serial.println(F("Setting ON power state..."));
+            turnOnPowerScoutsFromPOST(client);
+            message = "";
+          } else if ( message == "power=off" ) {
+            Serial.println(F("Setting OFF power state..."));
+            turnOnPowerScoutsFromPOST(client);
+            message = "";
+          } else if ( message == "delay_time=" ) {
+            Serial.println(F("Setting delay time..."));
+            setDelayTimeFromPOST(client);
+            message = "";
+          } else if ( message.length() > 15) {
+            Serial.println(F("No more recognized parameters."));
+            return;
           }
         } // end while
       }
@@ -425,23 +429,23 @@ void readPOST(EthernetClient &client) {
   }
 }
 
-void readGETIndex(SoftwareSerial &serial) {
-  Serial.println(F("readTemp..."));
-//  while ( !scout_01.available() ) {}
-  String strValue; //string to store entire command line
-  if ( serial.available() ) {
-    while ( serial.available() ) {
-      srl = serial.read();
-      if (srl == ';') break;
-      strValue += srl; //iterates char into string
-      delay(50);
-    }
-  }
-  scout_01_temp = strValue.toInt();
-  Serial.print(F("scout_01_temp: "));
-  Serial.println(scout_01_temp);
-  delay(50);
-}
+//void readGETIndex(SoftwareSerial &serial) {
+//  Serial.println(F("readTemp..."));
+////  while ( !scout_01.available() ) {}
+//  String strValue; //string to store entire command line
+//  if ( serial.available() ) {
+//    while ( serial.available() ) {
+//      srl = serial.read();
+//      if (srl == ';') break;
+//      strValue += srl; //iterates char into string
+//      delay(50);
+//    }
+//  }
+//  scout_01_temp = strValue.toInt();
+//  Serial.print(F("scout_01_temp: "));
+//  Serial.println(scout_01_temp);
+//  delay(50);
+//}
 
 void printHeaders(EthernetClient &client) {
   // send a standard HTTP response header
@@ -503,4 +507,38 @@ void printJSON_scout02(EthernetClient &client) {
   client.print(F("\"scout_02_delay_time\":"));
   client.print(scout_02_delay_time);
   client.print(F("}"));
+}
+
+void turnOnPowerScoutsFromPOST(EthernetClient &client) {
+  if (!scout_01_power) {
+    scout_01_power = !scout_01_power;
+    scout_01.println("turn_on;");
+    client.print("power state:");
+    client.println(scout_01_power);
+  }
+}
+void turnOffPowerScoutsFromPOST(EthernetClient &client) {
+  if (scout_01_power) {
+    scout_01_power = !scout_01_power;
+    scout_01.println("turn_off;");
+    client.print("power state:");
+    client.println(scout_01_power);
+  }
+}
+
+void setDelayTimeFromPOST(EthernetClient &client) {
+  String strValue;
+  while ( client.available() ) {
+    srl = client.read();
+    if (srl == ';') break;
+    strValue += srl;
+  }
+  scout_01_delay_time = strValue.toInt();
+  client.print(F("delay_time:"));
+  client.println(scout_01_delay_time);
+  scout_02_delay_time = strValue.toInt();
+  scout_03_delay_time = strValue.toInt();
+  
+  scout_01.print(F("delay_time:"));
+  scout_01.println(scout_01_delay_time);
 }
