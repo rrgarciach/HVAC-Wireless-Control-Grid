@@ -403,8 +403,8 @@ void readPOST(EthernetClient &client) {
             continue;
           }
 //          delay(50);
-          Serial.println(message);
-          message += srl;
+            Serial.print(srl);
+            message += srl;
           // read GET variables
           if ( message == "power=on" ) {
             Serial.println(F("Setting ON power state..."));
@@ -412,7 +412,7 @@ void readPOST(EthernetClient &client) {
             message = "";
           } else if ( message == "power=off" ) {
             Serial.println(F("Setting OFF power state..."));
-            turnOnPowerScoutsFromPOST(client);
+            turnOffPowerScoutsFromPOST(client);
             message = "";
           } else if ( message == "delay_time=" ) {
             Serial.println(F("Setting delay time..."));
@@ -511,19 +511,19 @@ void printJSON_scout02(EthernetClient &client) {
 
 void turnOnPowerScoutsFromPOST(EthernetClient &client) {
   if (!scout_01_power) {
-    scout_01_power = !scout_01_power;
+    scout_01_power = true;
     scout_01.println("turn_on;");
+  }
     client.print("power state:");
     client.println(scout_01_power);
-  }
 }
 void turnOffPowerScoutsFromPOST(EthernetClient &client) {
   if (scout_01_power) {
-    scout_01_power = !scout_01_power;
+    scout_01_power = false;
     scout_01.println("turn_off;");
+  }
     client.print("power state:");
     client.println(scout_01_power);
-  }
 }
 
 void setDelayTimeFromPOST(EthernetClient &client) {
