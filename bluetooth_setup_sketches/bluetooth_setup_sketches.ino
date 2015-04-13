@@ -38,8 +38,8 @@ void setup()
   // SET MASTER CONFIGS:
   // bt.println("AT+ROLE=1"); //set device as master
   // bt.println("AT+NAME=HVAC_Master"); //set device name
-  // bt.println("AT+LINK=12,12,272056"); //connect to device (address)
-  // bt.println("AT+LINK=0014, 01, 091548"); // binding to an HC-06
+  // bt.println("AT+LINK=12,12,272056"); //connect to device (HC-05 format)
+  // bt.println("AT+LINK=0014, 01, 091548"); // binding (HC-06 format)
   // bt.println("AT+PSWD=1234"); //types slave password
 }
 
