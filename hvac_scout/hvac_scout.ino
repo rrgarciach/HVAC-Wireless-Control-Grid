@@ -9,6 +9,7 @@
 #define pinBtRx 2
 #define pinBtTx 3
 #define pinPIR 4
+#define pinRedLed 12
 #define pinIRLed 13
 #define pinLM35 0
 #define pinCurrent 1
@@ -37,6 +38,7 @@ void setup() {
   master.begin(9600);
   pinMode(pinPIR, INPUT);
   pinMode(pinLM35, INPUT);
+  pinMode(pinRedLed, OUTPUT);
 //  emon1.current(pinCurrent, 6.7); // Current: input pin, calibration (current sensor)
   Serial.println(F("Beginning..."));
 }
@@ -54,8 +56,17 @@ void updateStates() {
   // PIR functionality:
   // check if movement:
   booPIR = digitalRead(pinPIR);
-  // if movement, store time stamp of event:
-  if (booPIR) timestampLastEvent = millis();
+  // if movement:
+  if (booPIR) {
+      // store time stamp of event:
+      timestampLastEvent = millis();
+      Serial.println(F("movement..!"));
+      // turn on led:
+      digitalWrite(pinRedLed, HIGH);
+  } else {
+      // turn off led:
+      digitalWrite(pinRedLed, LOW);
+  }
   // get time lapse from the last event:
   timeElapsed = millis() - timestampLastEvent;
   // if time lapse is higher than the delay threshold, switch variable:
