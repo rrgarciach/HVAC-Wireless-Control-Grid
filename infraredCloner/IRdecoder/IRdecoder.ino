@@ -109,13 +109,13 @@ void printpulses() {
   Serial.println("// ON, OFF (in 10's of microseconds)");
   for (uint8_t i = 0; i < currentpulse-1; i++) {
     Serial.print("\t"); // tab
-    Serial.print(pulses[i][1] * RESOLUTION / 10, DEC);
+    Serial.print((pulses[i][1] * RESOLUTION / 10)/2, DEC);
     Serial.print(", ");
-    Serial.print(pulses[i+1][0] * RESOLUTION / 10, DEC);
+    Serial.print((pulses[i+1][0] * RESOLUTION / 10)/2, DEC);
     Serial.println(",");
   }
   Serial.print("\t"); // tab
-  Serial.print(pulses[currentpulse-1][1] * RESOLUTION / 10, DEC);
+  Serial.print((pulses[currentpulse-1][1] * RESOLUTION / 10)/2, DEC);
   Serial.println(", 0};");
   
 //  Serial.print("MAX PULSE DETECTED:");
