@@ -60,7 +60,7 @@ HvacScout* scouts [10];
 
 // slave Bluetooth socket to communicate with Mobile App:
 // For HC-05 Bluetooth module's TX goes to arduino's TX (in this case, pin 3).
-SoftwareSerial mobile(pinBtRxMobile,pinBtTxMobile);
+SoftwareSerial mobile(pinBtRxMobile, pinBtTxMobile);
 // master Bluetooth socket to communicate with Scout Devices:
 //SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
 
@@ -201,38 +201,40 @@ void checkForEthernet() {
 }
 
 void checkForScouts() {
-//  Serial.println(F("checkForScouts"));
-//  while ( !scout_01.available() ) {}
-  String message; // String to process:
-  if ( scout_01.available() ) {
-    while ( scout_01.available() ) {
-      srl = scout_01.read();
-      Serial.print(srl);
-      delay(50);
-      message += srl;
-      if ( message == "data:" ) {
-        Serial.println();
-        Serial.println(F("reading data:"));
-        message = "";
-      }
-      if ( message == "temp:" ) {
-        readTemp(scout_01);
-        message = "";
-      }
-      if ( message == "delay_time:" ) {
-        readDelayTime(scout_01);
-        message = "";
-      }
-      if ( message == "quiet:" ) {
-        readQuiet(scout_01);
-        message = "";
-      }
-      if ( message == "power:" ) {
-        readPower(scout_01);
-        message = "";
-      }
+//     Serial.println(F("checkForScouts"));
+    String message; // String to process:
+    for (int i = 0; i < sizeof(scouts); i++) {
+        if (scouts[i] == NULL) continue;
+        if ( scouts[i]->serial->available() ) {
+            while ( scouts[i]->serial->available() ) {
+              srl = scouts[i]->serial->read();
+              Serial.print(srl);
+              delay(50);
+              message += srl;
+              if ( message == "data:" ) {
+                Serial.println();
+                Serial.println(F("reading data:"));
+                message = "";
+              }
+              if ( message == "temp:" ) {
+                readTemp(scouts[i]);
+                message = "";
+              }
+              if ( message == "delay_time:" ) {
+                readDelayTime(scouts[i]);
+                message = "";
+              }
+              if ( message == "quiet:" ) {
+                readQuiet(scouts[i]);
+                message = "";
+              }
+              if ( message == "power:" ) {
+                readPower(scouts[i]);
+                message = "";
+              }
+            }
+        }
     }
-  }
 }
 
 // Read commands from Mobile:
@@ -253,7 +255,7 @@ void checkForMobile() {
                 Serial.print(srl);
                 if (srl == ';') break;
             }
-            String name = message.toInt();
+            String name = message;
             if (name == "") {
                 Serial.println(F("Error on name value."));
                 mobile.println(F("Error\(1\)"));
@@ -302,7 +304,7 @@ void checkForMobile() {
                 Serial.println(F("Error on vcc value."));
                 mobile.println(F("Error\(1\)"));
             }
-            if ( setScout(name,rx,tx,key,vcc) ) {
+            if ( setScout(name,rx,tx,key) ) {
                 Serial.println(F("Scout created."));
                 mobile.println(F("OK"));
             } else {
@@ -314,77 +316,97 @@ void checkForMobile() {
   }
 }
 
-void readTemp(SoftwareSerial &serial) {
-  Serial.println(F("readTemp..."));
-//  while ( !scout_01.available() ) {}
+void readTemp(HvacScout* scout) {
+//  Serial.println(F("readTemp..."));
   String strValue; //string to store entire command line
-  if ( serial.available() ) {
-    while ( serial.available() ) {
-      srl = serial.read();
+  if ( scout->serial->available() ) {
+    while ( scout->serial->available() ) {
+      srl = scout->serial->read();
       if (srl == ';') break;
       strValue += srl; //iterates char into string
       delay(50);
     }
   }
-  scout_01_temp = strValue.toInt();
-  Serial.print(F("scout_01_temp: "));
-  Serial.println(scout_01_temp);
-  delay(50);
+    uint8_t temperature = strValue.toInt();
+    if (temperature > 0) {
+        scout->setTemperature( temperature );
+        Serial.print( scout->getName() );
+        Serial.print(F(": "));
+        Serial.println( scout->getTemperature() );
+        delay(50);
+        mobile.println(F("OK"));
+    } else {
+        Serial.print(F("Error reading temperature from scout: "));
+        Serial.println( scout->getName() );
+        mobile.println(F("Error\(0\)"));
+    }
 }
 
-void readDelayTime(SoftwareSerial &serial) {
-  Serial.println(F("readDelayTime..."));
-//  while ( !serial.available() ) {}
+void readDelayTime(HvacScout* scout) {
+//  Serial.println(F("readDelayTime..."));
   String strValue; //string to store entire command line
-  if ( scout_01.available() ) {
-    while ( scout_01.available() ) {
-      srl = scout_01.read();
+  if ( scout->serial->available() ) {
+    while ( scout->serial->available() ) {
+      srl = scout->serial->read();
       if (srl == ';') break;
       strValue += srl; //iterates char into string
       delay(50);
     }
   }
-  scout_01_delay_time = strValue.toInt();
-  scout_01_delay_time *= 1000;
-  Serial.print(F("scout_01_delay_time: "));
-  Serial.println(scout_01_delay_time);
-  delay(50);
+    uint16_t delayTime = strValue.toInt();
+    delayTime *= 1000;
+    if (delayTime > 0) {
+        scout->setDelayTime( delayTime );
+        Serial.print( scout->getName() );
+        Serial.print(F(": "));
+        Serial.println( scout->getDelayTime() );
+        delay(50);
+        mobile.println(F("OK"));
+    } else {
+        Serial.print(F("Error reading delay time from scout: "));
+        Serial.println( scout->getName() );
+        mobile.println(F("Error\(0\)"));
+    }
 }
 
-void readQuiet(SoftwareSerial &serial) {
-  Serial.println(F("readQuiet..."));
-//  while ( !serial.available() ) {}
+void readQuiet(HvacScout* scout) {
+//  Serial.println(F("readQuiet..."));
   String strValue; //string to store entire command line
-  if ( scout_01.available() ) {
-    while ( scout_01.available() ) {
-      srl = scout_01.read();
+  if ( scout->serial->available() ) {
+    while ( scout->serial->available() ) {
+      srl = scout->serial->read();
       if (srl == ';') break;
       strValue += srl; //iterates char into string
       delay(50);
     }
   }
-  scout_01_quiet = strValue.toInt();
-  Serial.print(F("scout_01_quiet: "));
-  Serial.println(scout_01_quiet);
-  delay(50);
+    bool quiet = strValue;
+    scout->setQuiet( quiet );
+    Serial.print( scout->getName() );
+    Serial.print(F(": "));
+    Serial.println( scout->getQuiet() );
+    delay(50);
+    mobile.println(F("OK"));
 }
 
-void readPower(SoftwareSerial &serial) {
-  Serial.println(F("readPower..."));
-//  while ( !serial.available() ) {}
-  String strValue; //string to store entire command line
-  if ( scout_01.available() ) {
-    while ( scout_01.available() ) {
-      srl = scout_01.read();
-      if (srl == ';') break;
-      strValue += srl; //iterates char into string
-      delay(50);
+void readPower(HvacScout* scout) {
+//    Serial.println(F("readPower..."));
+    String strValue; //string to store entire command line
+    if ( scout->serial->available() ) {
+        while ( scout->serial->available() ) {
+            srl = scout->serial->read();
+            if (srl == ';') break;
+            strValue += srl; //iterates char into string
+            delay(50);
+        }
     }
-  }
-  scout_01_power = strValue.toInt();
-  Serial.print(F("scout_01_power: "));
-  Serial.println(scout_01_power);
-  delay(50);
+    bool power = strValue;
+    scout->setPower( power );
+    Serial.print( scout->getName() );
+    Serial.print(F(": "));
+    Serial.println( scout->getPower() );
+    delay(50);
+    mobile.println(F("OK"));
 }
 
 void readGET(EthernetClient &client) {
@@ -406,12 +428,12 @@ void readGET(EthernetClient &client) {
           if ( message == "/01" ) {
             Serial.println(F("reading scout01"));
             printHeaders(client);
-            printJSON_scout01(client);
+            printScoutJSON(client, scouts[0]);
             return;
           } else if ( message == "/02" ) {
             Serial.println(F("reading scout02"));
             printHeaders(client);
-            printJSON_scout02(client);
+            printScoutJSON(client, scouts[1]);
             return;
           } else if ( message == "/03" ) {
     //          printJSON_scout03(client);
@@ -430,9 +452,7 @@ void readGET(EthernetClient &client) {
             Serial.println(F("reading all scouts"));
             printHeaders(client);
             client.print(F("["));
-            printJSON_scout01(client);
-            client.print(F(","));
-            printJSON_scout02(client);
+            printScoutsJSON(client);
             client.print(F("]"));
             return;
           } else if ( message.length() > 3) {
@@ -486,11 +506,11 @@ void readPOST(EthernetClient &client) {
             message = "";
           } else if ( message == "temp=" ) {
             Serial.println(F("Setting temperature..."));
-            setDelayTimeFromPOST(client);
+            setScoutsDelayTimeFromPOST(client);
             message = "";
           } else if ( message == "delay_time=" ) {
             Serial.println(F("Setting delay time..."));
-            setDelayTimeFromPOST(client);
+            setScoutsDelayTimeFromPOST(client);
             message = "";
           } else if ( message.length() > 15) {
             Serial.println(F("No more recognized parameters."));
@@ -531,134 +551,181 @@ void printHeaders(EthernetClient &client) {
 }
 
 
-void printJSON_scout01(EthernetClient &client) {
-  // print scout01:
-  client.print(F("{"));
-  // print name:
-  client.print(F("\"name\":"));
-  client.print(F("\""));
-  client.print(scout_01_name);
-  client.print(F("\","));
-  // print temperature:
-  client.print(F("\"scout_01_temp\":"));
-  client.print(scout_01_temp);
-  client.print(F(","));
-  // print quiet zone:
-  client.print(F("\"scout_01_quiet\":"));
-  client.print(scout_01_quiet);
-  client.print(F(","));
-  // print power status:
-  client.print(F("\"scout_01_power\":"));
-  client.print(scout_01_power);
-  client.print(F(","));
-  // print delay time:
-  client.print(F("\"scout_01_delay_time\":"));
-  client.print(scout_01_delay_time);
-  client.print(F("}"));
-}
-
-void printJSON_scout02(EthernetClient &client) {
-  // print scout02:
-  client.print(F("{"));
-  // print name:
-  client.print(F("\"name\":"));
-  client.print(F("\""));
-  client.print(scout_02_name);
-  client.print(F("\","));
-  // print temperature:
-  client.print(F("\"scout_02_temp\":"));
-  client.print(scout_02_temp);
-  client.print(F(","));
-  // print quiet zone:
-  client.print(F("\"scout_02_quiet\":"));
-  client.print(scout_02_quiet);
-  client.print(F(","));
-  // print power status:
-  client.print(F("\"scout_02_power\":"));
-  client.print(scout_02_power);
-  client.print(F(","));
-  // print delay time:
-  client.print(F("\"scout_02_delay_time\":"));
-  client.print(scout_02_delay_time);
-  client.print(F("}"));
-}
-
-void turnOnPowerScoutsFromPOST(EthernetClient &client) {
-  if (!scout_01_power) {
-    scout_01_power = true;
-    scout_01.println("turn_on;");
-  }
-    client.print("power state:");
-    client.println(scout_01_power);
-}
-void turnOffPowerScoutsFromPOST(EthernetClient &client) {
-  if (scout_01_power) {
-    scout_01_power = false;
-    scout_01.println("turn_off;");
-  }
-    client.print("power state:");
-    client.println(scout_01_power);
-}
-
-void setDelayTimeFromPOST(EthernetClient &client) {
-  String strValue;
-  while ( client.available() ) {
-    srl = client.read();
-    if (srl == ';') break;
-    strValue += srl;
-  }
-  scout_01_delay_time = strValue.toInt();
-  client.print(F("delay_time:"));
-  client.println(scout_01_delay_time);
-  scout_02_delay_time = strValue.toInt();
-  scout_03_delay_time = strValue.toInt();
-  
-  scout_01.print(F("delay_time:"));
-  scout_01.println(scout_01_delay_time);
-}
-
-void setPropertyFromPOST(EthernetClient &HttpClient, SoftwareSerial &scout, String strProperty, String strValue, char charTerminator) {
-    // read stream:
-    while ( HttpClient.available() ) {
-        srl = HttpClient.read();
-        // if terminator char found, stop reading stream:
-        if (srl == charTerminator) break;
-        // this line doesn't run if break was applied:
-        strValue += srl;
+void printScoutsJSON(EthernetClient &client) {
+    for (int i = 0; i < sizeof(scouts); i++) {
+        // start scout JSON object:
+        printScoutJSON(client, scouts[i]);
+        if ( i < (sizeof(scouts)-1) ) client.print(F(","));
     }
-    // send to selected Scout property:
-    scout.print(strProperty);
-    scout.print(F(":"));
-    scout.println(strValue);
-    if (readResponseFromScout(scout,"OK",'\n') == 100) {
-        // update local variable state
-        scout_01_delay_time = strValue.toInt();
-        HttpClient.print(strProperty);
-        HttpClient.print(F(":"));
-        HttpClient.println(strValue);
-        scout_02_delay_time = strValue.toInt();
-        scout_03_delay_time = strValue.toInt();
+}
+
+void printScoutJSON(EthernetClient &client, HvacScout* scout) {
+    if (scout != NULL) {
+        // start scout JSON object:
+        client.print(F("{"));
+        // print name:
+        client.print(F("\"name\":"));
+        client.print(F("\""));
+        client.print( scout->getName() );
+        client.print(F("\","));
+        // print temperature:
+        client.print(F("\"temperature\":"));
+        client.print( scout->getTemperature() );
+        client.print(F(","));
+        // print quiet zone:
+        client.print(F("\"quiet\":"));
+        client.print( scout->getQuiet() );
+        client.print(F(","));
+        // print power status:
+        client.print(F("\"power\":"));
+        client.print( scout->getPower() );
+        client.print(F(","));
+        // print delay time:
+        client.print(F("\"delayTime\":"));
+        client.print( scout->getDelayTime() );
+        client.print(F("}"));
+        // in case that the Scout doesn't exists:
     } else {
+        client.print(F("{}"));
+    }
+}
+
+// Turn ON ALL scouts after receiving command from HTTP client:
+void turnOnPowerScoutsFromPOST(EthernetClient &client) {
+    for (int i = 0; i < sizeof(scouts); i++) {
+        if (scouts[i] == NULL) continue;
+        if (scouts[i]->getPower() == false) {
+            scouts[i]->setPower(true);
+            // send success response to HTTP client:
+            client.print("power state:");
+            client.println(scouts[i]->getPower());
+        }
+    }
+}
+// Turn ON scout after receiving command from HTTP client:
+void turnOnPowerScoutFromPOST(EthernetClient &client, HvacScout* scout) {
+    if (scout == NULL) return;
+    if (scout->getPower() == false) {
+        scout->setPower(true);
+    }
+    // send success response to HTTP client:
+    client.print("power state:");
+    client.println(scout->getPower());
+}
+
+// Turn OFF ALL scout after receiving command from HTTP client:
+void turnOffPowerScoutsFromPOST(EthernetClient &client) {
+    for (int i = 0; i < sizeof(scouts); i++) {
+        if (scouts[i] == NULL) continue;
+        if (scouts[i]->getPower() == true) {
+            scouts[i]->setPower(false);
+        }
+        client.print("power state:");
+        client.println(scouts[i]->getPower());
+    }
+}
+// Turn OFF scout after receiving command from HTTP client:
+void turnOffPowerScoutsFromPOST(EthernetClient &client, HvacScout* scout) {
+    if (scout == NULL) return;
+    if (scout->getPower() == true) {
+        scout->setPower(false);
+    }
+    client.print("power state:");
+    client.println(scout->getPower());
+}
+
+// Read value from POST and change Delay Time of ALL scouts after receiving command from HTTP client:
+void setScoutsDelayTimeFromPOST(EthernetClient &client) {
+    String strValue;
+    while ( client.available() ) {
+        srl = client.read();
+        if (srl == ';') break;
+        strValue += srl;
     }
     
+    uint16_t delayTime = strValue.toInt();
+    if (delayTime > 0) {
+        for (int i = 0; i < sizeof(scouts); i++) {
+            if (scouts[i] == NULL) continue;
+            scouts[i]->setDelayTime( delayTime );
+        }
+        printScoutsJSON(client);
+    } else {
+        Serial.println(F("Error reading delay time from POST"));
+        // Error for JSON response:
+        client.println(F("{'error':{ 'code':0, 'message':'wrong delayTime provided' }"));
+    }
 }
-
-int readResponseFromScout(SoftwareSerial &scout, String strExpectedResponse, char charTerminator) {
+// Read value from POST and change Delay Time of scout after receiving command from HTTP client:
+void setScoutDelayTimeFromPOST(EthernetClient &client, HvacScout* scout) {
     String strValue;
-    // read stream:
-    while ( scout.available() ) {
-        srl = scout.read();
-        // if terminator char found, stop reading stream:
-        if (srl == charTerminator) break;
-        // this line doesn't run if break was applied:
+    while ( client.available() ) {
+        srl = client.read();
+        if (srl == ';') break;
         strValue += srl;
     }
-    // if  expected result, return success
-    if (strValue == strExpectedResponse) {
-        // 100: success:
-        return 100;
+    
+    uint16_t delayTime = strValue.toInt();
+    if (delayTime > 0) {
+        if (scout == NULL) return;
+        scout->setDelayTime( delayTime );
+        printScoutJSON(client, scout);
     } else {
-        // 0: unidentified error:
-        return 0;
+        Serial.print(F("Error reading delay time from POST for scout "));
+        // Error for JSON response:
+        client.print(F("{'name':'"));
+        client.print( scout->getName() );
+        client.print(F("',"));
+        client.print(F("'error':{ 'code':0, 'message':'wrong delayTime provided' }"));
+        client.println(F("}"));
     }
 }
+
+// Read value from POST and change Delay Time after receiving command from HTTP client:
+//void setScoutDelayTimeFromPOST(EthernetClient &client, HvacScout* scout) {}
+
+//void setPropertyFromPOST(EthernetClient &HttpClient, HvacScout* scout, String strProperty, String strValue, char charTerminator) {
+//    // read stream:
+//    while ( HttpClient.available() ) {
+//        srl = HttpClient.read();
+//        // if terminator char found, stop reading stream:
+//        if (srl == charTerminator) break;
+//        // this line doesn't run if break was applied:
+//        strValue += srl;
+//    }
+//    // send to selected Scout property:
+//    scout.print(strProperty);
+//    scout.print(F(":"));
+//    scout.println(strValue);
+//    if (readResponseFromScout(scout,"OK",'\n') == 100) {
+//        // update local variable state
+//        scout_01_delay_time = strValue.toInt();
+//        HttpClient.print(strProperty);
+//        HttpClient.print(F(":"));
+//        HttpClient.println(strValue);
+//        scout_02_delay_time = strValue.toInt();
+//        scout_03_delay_time = strValue.toInt();
+//    } else {
+//    }
+//    
+//}
+//
+//int readResponseFromScout(SoftwareSerial &scout, String strExpectedResponse, char charTerminator) {
+//    String strValue;
+//    // read stream:
+//    while ( scout.available() ) {
+//        srl = scout.read();
+//        // if terminator char found, stop reading stream:
+//        if (srl == charTerminator) break;
+//        // this line doesn't run if break was applied:
+//        strValue += srl;
+//    }
+//    // if  expected result, return success
+//    if (strValue == strExpectedResponse) {
+//        // 100: success:
+//        return 100;
+//    } else {
+//        // 0: unidentified error:
+//        return 0;
+//    }
+//}
