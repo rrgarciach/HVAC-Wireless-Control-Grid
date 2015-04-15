@@ -9,11 +9,12 @@ A11 (65), A12 (66), A13 (67), A14 (68), A15 (69).
 #include <SPI.h>
 #include <Ethernet.h>
 #include <SoftwareSerial.h>
-
+#include <HvacScout.h>
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 177);
+//IPAddress ip(192, 168, 1, 177);
+IPAddress ip(172, 16, 19, 100);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
@@ -102,19 +103,8 @@ void setup() {
   scout_01.begin(38400);
   pinMode(pin222AScout_01, OUTPUT);
   pinMode(pinKEYScout_01, OUTPUT);
-  Serial.println(F("Starting SPP"));
-  digitalWrite(pin222AScout_01, LOW);
-  digitalWrite(pinKEYScout_01, HIGH);
-  digitalWrite(pin222AScout_01, HIGH);
-  delay(500);
-  scout_01.println("AT");
-  delay(500);
-  scout_01.println("AT+INIT");
-  delay(1000);
-  digitalWrite(pin222AScout_01, LOW);
-  delay(500);
-  digitalWrite(pinKEYScout_01, LOW);
-  digitalWrite(pin222AScout_01, HIGH);
+    // start Bluetooth's SPP protocol:
+  startSPP();
   Serial.println(F("Starting Serial"));
   scout_01.end();
   delay(500);
@@ -131,10 +121,26 @@ void setup() {
 }
 
 void loop() {
-  checkForScouts();
-  checkForMobile();
-  // listen for incoming clients
-  checkForEthernet();
+    checkForScouts();
+    checkForMobile();
+    // listen for incoming clients
+    checkForEthernet();
+}
+
+void startSPP() {
+    Serial.println(F("Starting SPP"));
+    digitalWrite(pin222AScout_01, LOW);
+    digitalWrite(pinKEYScout_01, HIGH);
+    digitalWrite(pin222AScout_01, HIGH);
+    delay(500);
+    scout_01.println("AT");
+    delay(500);
+    scout_01.println("AT+INIT");
+    delay(1000);
+    digitalWrite(pin222AScout_01, LOW);
+    delay(500);
+    digitalWrite(pinKEYScout_01, LOW);
+    digitalWrite(pin222AScout_01, HIGH);
 }
 
 void checkForEthernet() {
@@ -414,6 +420,10 @@ void readPOST(EthernetClient &client) {
             Serial.println(F("Setting OFF power state..."));
             turnOffPowerScoutsFromPOST(client);
             message = "";
+          } else if ( message == "temp=" ) {
+            Serial.println(F("Setting temperature..."));
+            setDelayTimeFromPOST(client);
+            message = "";
           } else if ( message == "delay_time=" ) {
             Serial.println(F("Setting delay time..."));
             setDelayTimeFromPOST(client);
@@ -541,4 +551,50 @@ void setDelayTimeFromPOST(EthernetClient &client) {
   
   scout_01.print(F("delay_time:"));
   scout_01.println(scout_01_delay_time);
+}
+
+void setPropertyFromPOST(EthernetClient &HttpClient, SoftwareSerial &scout, String strProperty, String strValue, char charTerminator) {
+    // read stream:
+    while ( HttpClient.available() ) {
+        srl = HttpClient.read();
+        // if terminator char found, stop reading stream:
+        if (srl == charTerminator) break;
+        // this line doesn't run if break was applied:
+        strValue += srl;
+    }
+    // send to selected Scout property:
+    scout.print(strProperty);
+    scout.print(F(":"));
+    scout.println(strValue);
+    if (readResponseFromScout(scout,"OK",'\n') == 100) {
+        // update local variable state
+        scout_01_delay_time = strValue.toInt();
+        HttpClient.print(strProperty);
+        HttpClient.print(F(":"));
+        HttpClient.println(strValue);
+        scout_02_delay_time = strValue.toInt();
+        scout_03_delay_time = strValue.toInt();
+    } else {
+    }
+    
+}
+
+int readResponseFromScout(SoftwareSerial &scout, String strExpectedResponse, char charTerminator) {
+    String strValue;
+    // read stream:
+    while ( scout.available() ) {
+        srl = scout.read();
+        // if terminator char found, stop reading stream:
+        if (srl == charTerminator) break;
+        // this line doesn't run if break was applied:
+        strValue += srl;
+    }
+    // if  expected result, return success
+    if (strValue == strExpectedResponse) {
+        // 100: success:
+        return 100;
+    } else {
+        // 0: unidentified error:
+        return 0;
+    }
 }

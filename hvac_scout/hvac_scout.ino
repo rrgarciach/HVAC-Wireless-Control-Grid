@@ -168,9 +168,14 @@ void changeDelayTime() {
       delay(50);
     }
   }
-  timeDelayThreshold = strValue.toInt();
-  timeDelayThreshold *= 1000;
-  master.print(F("delay_time:"));
-  master.println(timeDelayThreshold / 1000);
-  delay(50);
+    uint16_t intValue = strValue.toInt();
+    if (intValue > 0) {
+        timeDelayThreshold = intValue;
+        timeDelayThreshold *= 1000;
+        master.print(F("OK"));
+        delay(50);
+    } else {
+        master.print(F("ERROR\(1\)"));
+        delay(50);
+    }
 }
