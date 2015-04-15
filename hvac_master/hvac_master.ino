@@ -22,37 +22,38 @@ IPAddress ip(172, 16, 19, 100);
 EthernetServer server(80);
 
 // Definition of digital pins:
-#define pin222AScout_01 2
-#define pinKEYScout_01 3
-#define pinSSD 4
+uint8_t pin222A = 2;
+//#define pinKEYScout_01 3
 #if defined(__AVR_ATmega328P__) // this is Uno
 #define pinBtRxMobile 6
 #define pinBtTxMobile 5
-#define pinBtRxScout_01 8
-#define pinBtTxScout_01 7
+//#define pinBtRxScout_01 8
+//#define pinBtTxScout_01 7
 #elif defined(__AVR_ATmega2560__) // this is mega
+#define pinSSD 4
 #define pinBtRxMobile 10
 #define pinBtTxMobile 22
-#define pinBtRxScout_01 11
-#define pinBtTxScout_01 23
-#define pinBtRxScout_02 12
-#define pinBtTxScout_02 24
-#define pinBtRxScout_03 13
-#define pinBtTxScout_03 25
-#define pinBtRxScout_04 62
-#define pinBtTxScout_04 26
-#define pinBtRxScout_05 63
-#define pinBtTxScout_05 27
-#define pinBtRxScout_06 64
-#define pinBtTxScout_06 28
-#define pinBtRxScout_07 65
-#define pinBtTxScout_07 29
-#define pinBtRxScout_08 66
-#define pinBtTxScout_08 30
-#define pinBtRxScout_09 67
-#define pinBtTxScout_09 31
-#define pinBtRxScout_10 68
-#define pinBtTxScout_10 32
+HvacScout* scouts [10];
+//#define pinBtRxScout_01 11
+//#define pinBtTxScout_01 23
+//#define pinBtRxScout_02 12
+//#define pinBtTxScout_02 24
+//#define pinBtRxScout_03 13
+//#define pinBtTxScout_03 25
+//#define pinBtRxScout_04 62
+//#define pinBtTxScout_04 26
+//#define pinBtRxScout_05 63
+//#define pinBtTxScout_05 27
+//#define pinBtRxScout_06 64
+//#define pinBtTxScout_06 28
+//#define pinBtRxScout_07 65
+//#define pinBtTxScout_07 29
+//#define pinBtRxScout_08 66
+//#define pinBtTxScout_08 30
+//#define pinBtRxScout_09 67
+//#define pinBtTxScout_09 31
+//#define pinBtRxScout_10 68
+//#define pinBtTxScout_10 32
 #else // everything else
 #error "unknown MCU"
 #endif
@@ -61,36 +62,10 @@ EthernetServer server(80);
 // For HC-05 Bluetooth module's TX goes to arduino's TX (in this case, pin 3).
 SoftwareSerial mobile(pinBtRxMobile,pinBtTxMobile);
 // master Bluetooth socket to communicate with Scout Devices:
-SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
+//SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
 
 // variable to store received characters from Bluetooth devices:
 char srl;
-
-// scout's state variables:
-// scout 01
-String scout_01_name = "Scout01";
-uint8_t scout_01_temp = 0;
-uint32_t scout_01_delay_time = 0;
-bool scout_01_quiet = false;
-bool scout_01_power = false;
-// scout 02
-String scout_02_name = "Scout02";
-uint8_t scout_02_temp = 0;
-uint32_t scout_02_delay_time = 0;
-bool scout_02_quiet = false;
-bool scout_02_power = false;
-// scout 03
-String scout_03_name = "Scout03";
-uint8_t scout_03_temp = 0;
-uint32_t scout_03_delay_time = 0;
-bool scout_03_quiet = false;
-bool scout_03_power = false;
-// scout 04
-String scout_04_name = "Scout04";
-uint8_t scout_04_temp = 0;
-uint32_t scout_04_delay_time = 0;
-bool scout_04_quiet = false;
-bool scout_04_power = false;
 
 void setup() {
   // The next two lines are to avoid the board from hanging after some requests:
@@ -100,15 +75,15 @@ void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
   mobile.begin(9600);
-  scout_01.begin(38400);
-  pinMode(pin222AScout_01, OUTPUT);
-  pinMode(pinKEYScout_01, OUTPUT);
+//  scout_01.begin(38400);
+//  pinMode(pin222AScout_01, OUTPUT);
+//  pinMode(pinKEYScout_01, OUTPUT);
     // start Bluetooth's SPP protocol:
   startSPP();
-  Serial.println(F("Starting Serial"));
-  scout_01.end();
-  delay(500);
-  scout_01.begin(9600);
+//  Serial.println(F("Starting Serial"));
+//  scout_01.end();
+//  delay(500);
+//  scout_01.begin(9600);
 //  while (!Serial) {
 //    ; // wait for serial port to connect. Needed for Leonardo only
 //  }
@@ -127,20 +102,41 @@ void loop() {
     checkForEthernet();
 }
 
+bool setScout(String name, uint8_t pinRx, uint8_t pinTx, uint8_t pinKey) {
+    for (int i = 0; i < sizeof(scouts); i++) {
+        if (scouts[i] == NULL) {
+            scouts[i] = new HvacScout(name, pinRx, pinTx, pinKey, pin222A);
+            scouts[i]->startSPP();
+            scouts[i]->start();
+            return true;
+        }
+    }
+    return false;
+}
+
+int getScout(String name) {
+    for (int i = 0; i < sizeof(scouts); i++) {
+        if (scouts[i]->getName() == name) {
+            return i;
+        }
+    }
+    return 404;
+}
+
 void startSPP() {
-    Serial.println(F("Starting SPP"));
-    digitalWrite(pin222AScout_01, LOW);
-    digitalWrite(pinKEYScout_01, HIGH);
-    digitalWrite(pin222AScout_01, HIGH);
-    delay(500);
-    scout_01.println("AT");
-    delay(500);
-    scout_01.println("AT+INIT");
-    delay(1000);
-    digitalWrite(pin222AScout_01, LOW);
-    delay(500);
-    digitalWrite(pinKEYScout_01, LOW);
-    digitalWrite(pin222AScout_01, HIGH);
+//    Serial.println(F("Starting SPP"));
+//    digitalWrite(pin222AScout_01, LOW);
+//    digitalWrite(pinKEYScout_01, HIGH);
+//    digitalWrite(pin222AScout_01, HIGH);
+//    delay(500);
+//    scout_01.println("AT");
+//    delay(500);
+//    scout_01.println("AT+INIT");
+//    delay(1000);
+//    digitalWrite(pin222AScout_01, LOW);
+//    delay(500);
+//    digitalWrite(pinKEYScout_01, LOW);
+//    digitalWrite(pin222AScout_01, HIGH);
 }
 
 void checkForEthernet() {
@@ -239,13 +235,81 @@ void checkForScouts() {
   }
 }
 
+// Read commands from Mobile:
 void checkForMobile() {
 //  Serial.println(F("checkForMobile"));
   if ( mobile.available() ) {
-    if ( mobile.available() ) {
-      srl = mobile.read();
-      Serial.print(srl);
-      delay(50);
+      String message;
+    while ( mobile.available() ) {
+        srl = mobile.read();
+        message += srl;
+        Serial.print(srl);
+//      delay(50);
+        // on command setScout:
+        if (message == "setScout:") {
+            while ( mobile.available() ) {
+                srl = mobile.read();
+                message += srl;
+                Serial.print(srl);
+                if (srl == ';') break;
+            }
+            String name = message.toInt();
+            if (name == "") {
+                Serial.println(F("Error on name value."));
+                mobile.println(F("Error\(1\)"));
+            }
+            while ( mobile.available() ) {
+                srl = mobile.read();
+                message += srl;
+                Serial.print(srl);
+                if (srl == ';') break;
+            }
+            uint8_t rx = message.toInt();
+            if (rx == 0) {
+                Serial.println(F("Error on rx value."));
+                mobile.println(F("Error\(1\)"));
+            }
+            while ( mobile.available() ) {
+                srl = mobile.read();
+                message += srl;
+                Serial.print(srl);
+                if (srl == ';') break;
+            }
+            uint8_t tx = message.toInt();
+            if (tx == 0) {
+                Serial.println(F("Error on tx value."));
+                mobile.println(F("Error\(1\)"));
+            }
+            while ( mobile.available() ) {
+                srl = mobile.read();
+                message += srl;
+                Serial.print(srl);
+                if (srl == ';') break;
+            }
+            uint8_t key = message.toInt();
+            if (key == 0) {
+                Serial.println(F("Error on key value."));
+                mobile.println(F("Error\(1\)"));
+            }
+            while ( mobile.available() ) {
+                srl = mobile.read();
+                message += srl;
+                Serial.print(srl);
+                if (srl == ';') break;
+            }
+            uint8_t vcc = message.toInt();
+            if (vcc == 0) {
+                Serial.println(F("Error on vcc value."));
+                mobile.println(F("Error\(1\)"));
+            }
+            if ( setScout(name,rx,tx,key,vcc) ) {
+                Serial.println(F("Scout created."));
+                mobile.println(F("OK"));
+            } else {
+                Serial.println(F("Error while trying to create scout."));
+                mobile.println(F("Error\(0\)"));
+            }
+        }
     }
   }
 }
