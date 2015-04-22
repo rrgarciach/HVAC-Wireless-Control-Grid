@@ -24,11 +24,7 @@ EthernetServer server(80);
 // Definition of digital pins:
 uint8_t pin222A = 2;
 //#define pinKEYScout_01 3
-#if defined(__AVR_ATmega328P__) // this is Uno
-#define pinBtRxMobile 6
-#define pinBtTxMobile 5
-int pinsRxTx[10][2] = {{10,22}};
-#elif defined(__AVR_ATmega2560__) // this is mega
+#if defined(__AVR_ATmega2560__) // this is mega
 #define pinSSD 4
 #define pinBtRxMobile 10
 #define pinBtTxMobile 22
@@ -47,7 +43,7 @@ int pinsRxTx[10][2] = {
                         {68,32},
                     };
 #else // everything else
-#error "unknown MCU"
+#error "unknown MCU or not enough memory"
 #endif
 
 // slave Bluetooth socket to communicate with Mobile App:
@@ -65,8 +61,8 @@ void setup() {
     digitalWrite(pinSSD, HIGH);
   
     // Open serial communications and wait for port to open:
-    Serial.begin(9600);
     mobile.begin(9600);
+    Serial.begin(9600);
 	setHvacScout("ScoutPrueba00",0,3);
     // start Bluetooth's SPP protocol:
     startSPP();
@@ -80,11 +76,19 @@ void setup() {
 
 void loop() {
     // read each HVAC Scout data:
-    checkForScouts();
+//    checkForScouts();
     // check if is there any Mobile command:
-    checkForMobile();
+//    checkForMobile();
+	
+	while ( mobile.available() ) {
+  		Serial.println(F("ACTION: checkForMobile: on while"));
+        srl = mobile.read();
+        Serial.print(srl);
+		delay(50);
+	}
+	
     // listen for incoming clients:
-    checkForEthernet();
+//    checkForEthernet();
 }
 
 bool setHvacScout(String name, uint8_t slot, uint8_t pinKey) {
@@ -276,14 +280,16 @@ void checkForScouts() {
 
 // Read commands from Mobile:
 void checkForMobile() {
-//  Serial.println(F("ACTION: checkForMobile"));
+  Serial.println(F("ACTION: checkForMobile"));
   if ( mobile.available() ) {
+  Serial.println(F("ACTION: checkForMobile: receiving data"));
       String message;
     while ( mobile.available() ) {
+  Serial.println(F("ACTION: checkForMobile: on while"));
         srl = mobile.read();
         message += srl;
         Serial.print(srl);
-//      delay(50);
+		delay(50);
         // on command setHvacScout:
         if (message == "setHvacScout:") {
             // Read stream for name:
@@ -370,7 +376,7 @@ void readTempFromHvacScout(HvacScout* scout) {
         Serial.print(F(".temperature: "));
         Serial.println( scout->getTemperature() );
         delay(50);
-        mobile.println(F("OK"));
+//        mobile.println(F("OK"));
     } else {
         Serial.print(F("Error reading temperature from scout: "));
         Serial.println( scout->getName() );
@@ -398,7 +404,7 @@ void readDelayTimeFromHvacScout(HvacScout* scout) {
         Serial.print(F(".delayTime: "));
         Serial.println( scout->getDelayTime() );
         delay(50);
-        mobile.println(F("OK"));
+//        mobile.println(F("OK"));
     } else {
         Serial.print(F("Error reading delay time from scout: "));
         Serial.println( scout->getName() );
@@ -408,23 +414,23 @@ void readDelayTimeFromHvacScout(HvacScout* scout) {
 
 void readQuietFromHvacScout(HvacScout* scout) {
 	Serial.println();
-  Serial.println(F("ACTION: readQuietFromHvacScout"));
-  String strValue; //string to store entire command line
-  if ( scout->serial->available() ) {
-    while ( scout->serial->available() ) {
-      srl = scout->serial->read();
-      if (srl == ';') break;
-      strValue += srl; //iterates char into string
-      delay(50);
-    }
-  }
-    bool quiet = strValue;
-    scout->setQuiet( quiet );
-    Serial.print( scout->getName() );
-    Serial.print(F(".quiet: "));
-    Serial.println( scout->getQuiet() );
-    delay(50);
-    mobile.println(F("OK"));
+	Serial.println(F("ACTION: readQuietFromHvacScout"));
+	String strValue; //string to store entire command line
+	if ( scout->serial->available() ) {
+		while ( scout->serial->available() ) {
+			srl = scout->serial->read();
+			if (srl == ';') break;
+			strValue += srl; //iterates char into string
+			delay(50);
+		}
+	}
+	bool quiet = strValue;
+	scout->setQuiet( quiet );
+	Serial.print( scout->getName() );
+	Serial.print(F(".quiet: "));
+	Serial.println( scout->getQuiet() );
+	delay(50);
+	//    mobile.println(F("OK"));
 }
 
 void readPowerFromHvacScout(HvacScout* scout) {
@@ -445,7 +451,7 @@ void readPowerFromHvacScout(HvacScout* scout) {
     Serial.print(F(".power: "));
     Serial.println( scout->getPower() );
     delay(50);
-    mobile.println(F("OK"));
+//    mobile.println(F("OK"));
 }
 
 void readGET(EthernetClient &client) {
