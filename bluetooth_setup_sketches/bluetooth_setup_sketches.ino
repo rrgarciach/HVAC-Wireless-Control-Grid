@@ -17,7 +17,8 @@ void setup()
 //  digitalWrite(7, HIGH);
   Serial.begin(9600);
   //Serial.println("System Up: BLUETOOTH CONFIG SPECS:");
-  bt.begin(38400);
+//  bt.begin(38400); // when using AT mode
+  bt.begin(9600);
   delay(10);
 
   // DISPLAY CONFIGS:
