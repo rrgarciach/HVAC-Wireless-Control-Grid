@@ -98,7 +98,7 @@ void sendPageSerial() {
   master.print(F(";"));
   // send delaytime:
   master.print(F("delay_time:"));
-  master.println(timeDelayThreshold / 1000);
+  master.print(timeDelayThreshold / 1000);
   master.print(F(";"));
   // send quiet zone:
   master.print(F("quiet:"));
@@ -134,27 +134,27 @@ void receiveCommands() {
 }
 
 void turnOnHvac() {
-  if (true == hvacPower) {
-    master.println(F("already_on;"));
-  } else {
+//  if (true == hvacPower) {
+//    master.println(F("already_on;"));
+//  } else {
     master.println(F("turning_on;"));
     // send IR signal to HVAC device:
     irSender.sendCommand(0);
     // update HVAC state's variable:
     hvacPower = true;
-  }
+//  }
 }
 
 void turnOffHvac() {
-  if (false == hvacPower) {
-    master.println(F("already_off;"));
-  } else {
+//  if (false == hvacPower) {
+//    master.println(F("already_off;"));
+//  } else {
     master.println(F("turning_off;"));
     // send IR signal to HVAC device:
     irSender.sendCommand(1);
     // update HVAC state's variable:
     hvacPower = false;
-  }
+//  }
 }
 
 void changeDelayTime() {
