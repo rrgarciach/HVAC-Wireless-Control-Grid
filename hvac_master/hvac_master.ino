@@ -247,36 +247,28 @@ void checkForScouts() {
 		delay(50);
 		scouts[i]->serial->println(F("getScouts;"));
 		delay(1500);
-        if ( scouts[i]->serial->available() ) {
-            while ( scouts[i]->serial->available() ) {
-              srl = scouts[i]->serial->read();
-              Serial.print(srl);
-              delay(50);
-              message += srl;
-              if ( message == F("data:") ) {
-                Serial.println();
-                Serial.print(F("ACTION: reading data from scout "));
-                Serial.println( scouts[i]->getName() );
-                message = "";
-              }
-              if ( message == F("temp:") ) {
-                readTempFromHvacScout(scouts[i]);
-                message = "";
-              }
-              if ( message == F("delay_time:") ) {
-                readDelayTimeFromHvacScout(scouts[i]);
-                message = "";
-              }
-              if ( message == F("quiet:") ) {
-                readQuietFromHvacScout(scouts[i]);
-                message = "";
-              }
-              if ( message == F("power:") ) {
-                readPowerFromHvacScout(scouts[i]);
-                message = "";
-              }
-            }
-        }
+		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+		if ( message == F("data") ) {
+			Serial.println();
+			Serial.print(F("ACTION: reading data from scout "));
+			Serial.println( scouts[i]->getName() );
+		}
+		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+		if ( message == F("temp") ) {
+			readTempFromHvacScout(scouts[i]);
+		}
+		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+		if ( message == F("delay_time") ) {
+			readDelayTimeFromHvacScout(scouts[i]);
+		}
+		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+		if ( message == F("quiet") ) {
+			readQuietFromHvacScout(scouts[i]);
+		}
+		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+		if ( message == F("power") ) {
+			readPowerFromHvacScout(scouts[i]);
+		}
 		scouts[i]->end();
     }
 }
@@ -349,95 +341,58 @@ void checkForMobile() {
 }
 
 void readTempFromHvacScout(HvacScout* scout) {
-	Serial.println();
-  Serial.println(F("ACTION: readTempFromHvacScout"));
-  String strValue; //string to store entire command line
-  if ( scout->serial->available() ) {
-    while ( scout->serial->available() ) {
-      srl = scout->serial->read();
-      if (srl == ';') break;
-      strValue += srl; //iterates char into string
-      delay(50);
-    }
-  }
-    uint8_t temperature = strValue.toInt();
+	Serial.println(F("\nACTION: readTempFromHvacScout"));
+	uint8_t temperature = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
     if (temperature > 0) {
         scout->setTemperature( temperature );
+        Serial.println();
         Serial.print( scout->getName() );
         Serial.print(F(".temperature: "));
         Serial.println( scout->getTemperature() );
         delay(50);
 //        Serial2.println(F("OK"));
     } else {
-        Serial.print(F("Error reading temperature from scout: "));
+        Serial.print(F("Error reading temperature from scout= "));
         Serial.println( scout->getName() );
-        Serial2.println(F("Error\(0\)"));
+        Serial2.println(F("Error\(2\)"));
     }
 }
 
 void readDelayTimeFromHvacScout(HvacScout* scout) {
-  Serial.println();
-  Serial.println(F("ACTION: readDelayTimeFromHvacScout"));
-  String strValue; //string to store entire command line
-  if ( scout->serial->available() ) {
-    while ( scout->serial->available() ) {
-      srl = scout->serial->read();
-      if (srl == ';') break;
-      strValue += srl; //iterates char into string
-      delay(50);
-    }
-  }
-    uint16_t delayTime = strValue.toInt();
-//    delayTime *= 1000;
+  Serial.println(F("\nACTION: readDelayTimeFromHvacScout"));
+    uint16_t delayTime = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
     if (delayTime > 0) {
         scout->setDelayTime( delayTime );
+		Serial.println();
         Serial.print( scout->getName() );
         Serial.print(F(".delayTime: "));
         Serial.println( scout->getDelayTime() );
         delay(50);
 //        Serial2.println(F("OK"));
     } else {
-        Serial.print(F("Error reading delay time from scout: "));
+        Serial.print(F("Error reading delay time from scout= "));
         Serial.println( scout->getName() );
-        Serial2.println(F("Error\(0\)"));
+        Serial2.println(F("Error\(2\)"));
     }
 }
 
 void readQuietFromHvacScout(HvacScout* scout) {
-	Serial.println();
-	Serial.println(F("ACTION: readQuietFromHvacScout"));
-	String strValue; //string to store entire command line
-	if ( scout->serial->available() ) {
-		while ( scout->serial->available() ) {
-			srl = scout->serial->read();
-			if (srl == ';') break;
-			strValue += srl; //iterates char into string
-			delay(50);
-		}
-	}
-	bool quiet = strValue;
+	Serial.println(F("\nACTION: readQuietFromHvacScout"));
+	bool quiet = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
 	scout->setQuiet( quiet );
+	Serial.println();
 	Serial.print( scout->getName() );
-	Serial.print(F(".quiet: "));
+	Serial.print(F(".quiet= "));
 	Serial.println( scout->getQuiet() );
 	delay(50);
 	//    Serial2.println(F("OK"));
 }
 
 void readPowerFromHvacScout(HvacScout* scout) {
-	Serial.println();
-    Serial.println(F("ACTION: readPowerFromHvacScout"));
-    String strValue; //string to store entire command line
-    if ( scout->serial->available() ) {
-        while ( scout->serial->available() ) {
-            srl = scout->serial->read();
-            if (srl == ';') break;
-            strValue += srl; //iterates char into string
-            delay(50);
-        }
-    }
-    bool power = strValue;
+    Serial.println(F("\nACTION: readPowerFromHvacScout"));
+    bool power = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
     scout->setPower( power );
+	Serial.println();
     Serial.print( scout->getName() );
     Serial.print(F(".power: "));
     Serial.println( scout->getPower() );
@@ -739,20 +694,21 @@ String readArgumentFromHardwareSerial(HardwareSerial &serial, char terminator)
 	}
 	return argument;
 }
-bool readCommandFromSoftwareSerial(SoftwareSerial &serial, String command, char terminator)
+bool readCommandFromSoftwareSerial(SoftwareSerial* serial, String command, char terminator)
 {
 	if (command == readArgumentFromSoftwareSerial(serial,terminator)) {
 		return true;
 	}
 	return false;
 }
-String readArgumentFromSoftwareSerial(SoftwareSerial &serial, char terminator)
+String readArgumentFromSoftwareSerial(SoftwareSerial* serial, char terminator)
 {
 	String argument;
 	char c;
-	while ( serial.available() ) {
-		c = serial.read();
+	while ( serial->available() ) {
+		c = serial->read();
 		Serial.print(c);
+		delay(50);
 		if (c == terminator) break;
 		argument += c;
 	}
@@ -812,4 +768,5 @@ String readArgumentFromSoftwareSerial(SoftwareSerial &serial, char terminator)
 * ERROR CODE LIST:
 * 0: 
 * 1: Wrong value provided.
+* 2: Wrong value received from response.
 */
