@@ -100,8 +100,8 @@ bool setHvacScout(String name, uint8_t slot) {
 //    return false;
 }
 
-bool setHvacGroup(HvacScout* scout, int8_t groupId) {
-	scout->setGroupId(groupId);
+void setHvacGroup(uint8_t scoutId, int8_t groupId) {
+	scouts[scoutId]->setGroupId(groupId);
 }
 
 int getScout(String name) {
@@ -287,12 +287,11 @@ void checkForMobile() {
   if ( Serial2.available() ) {
       String message;
     while ( Serial2.available() ) {
-        srl = Serial2.read();
-        message += srl;
-        Serial.print(srl);
-		delay(50);
         // on command setHvacScout:
-        if ( readCommandFromHardwareSerial(Serial2, F("setHvacScout:"), ';') ) {
+		if ( readCommandFromHardwareSerial(Serial2, F("getHvacScouts"), ';') ) {
+			Serial.println(F("Sending JSON of Scouts:"));
+			Serial2.println(scoutsToJson());
+        } else if ( readCommandFromHardwareSerial(Serial2, F("setHvacScout"), ';') ) {
             // Read stream for name:
             String name = readArgumentFromHardwareSerial(Serial2,';');
             if (name == "") {
@@ -326,9 +325,24 @@ void checkForMobile() {
                 Serial.println(F("ERROR: unable to create scout."));
                 Serial2.println(F("Error\(0\)"));
             }
-        } else if ( readCommandFromHardwareSerial(Serial2, F("getHvacScouts:"), ';') ) {
-			Serial.println(F("Sending JSON of Scouts:"));
-			Serial2.println(scoutsToJson());
+		} else if ( readCommandFromHardwareSerial(Serial2, F("setHvacGroup"), ':') ) {
+			Serial.println(F("Setting HVAC group:"));
+			// Read groupId:
+			uint8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+            int8_t groupId = readArgumentFromHardwareSerial(Serial2,';').toInt();
+			if (scoutId > 9 || scoutId < 0) {
+                Serial.println(F("ERROR: wrong scoutId value."));
+                Serial2.println(F("Error\(1\)"));
+            } else {
+				if (groupId > 4 || groupId < -1) {
+					Serial.println(F("ERROR: wrong groupId value."));
+					Serial2.println(F("Error\(1\)"));
+				} else {
+					setHvacGroup(scoutId,groupId);
+					Serial.println(F("SUCCESS: Scout Group set."));
+					Serial2.println(F("OK"));
+				}
+			}
 		}
     }
   }
@@ -719,6 +733,7 @@ String readArgumentFromHardwareSerial(HardwareSerial &serial, char terminator)
 	while ( serial.available() ) {
 		c = serial.read();
 		Serial.print(c);
+		delay(50);
 		if (c == terminator) break;
 		argument += c;
 	}
@@ -792,3 +807,9 @@ String readArgumentFromSoftwareSerial(SoftwareSerial &serial, char terminator)
 //        return 0;
 //    }
 //}
+
+/*
+* ERROR CODE LIST:
+* 0: 
+* 1: Wrong value provided.
+*/
