@@ -47,7 +47,7 @@ void loop() {
   if (millis() % 1000 == 0) receiveCommands();
   if (millis() % 1000 == 0) updateStates();
   if (millis() % 10000 == 0) react();
-  if (millis() % 10000 == 0) sendPageSerial();
+//  if (millis() % 10000 == 0) sendPageSerial();
 }
 
 // Function to update state's variables:
@@ -121,7 +121,9 @@ void receiveCommands() {
       delay(50);
       command += srl; //iterates char into string
       
-      if (command == "turn_on;") { //this compares catched string vs. expected command string
+      if (command == "getScouts;") { //this compares catched string vs. expected command string
+        sendPageSerial();
+      } else if (command == "turn_on;") { //this compares catched string vs. expected command string
         turnOnHvac();
       } else if (command == "turn_off;") { //this compares catched string vs. expected command string
         turnOffHvac();
