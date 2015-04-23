@@ -90,7 +90,7 @@ void react() {
 
 // Function to print serialized page:
 void sendPageSerial() {
-  Serial.println(F("sending page serial"));
+  Serial.println(F("Sending page serial:"));
   master.print(F("data:"));
   // send temperature:
   master.print(F("temp:"));
@@ -109,7 +109,7 @@ void sendPageSerial() {
   master.print(hvacPower);
   master.print(F(";"));
   // terminate serial line:
-  master.println("");
+  master.println();
 }
 
 void receiveCommands() {
@@ -121,13 +121,13 @@ void receiveCommands() {
       delay(50);
       command += srl; //iterates char into string
       
-      if (command == "getScouts;") { //this compares catched string vs. expected command string
+      if (command == F("getScouts;")) { //this compares catched string vs. expected command string
         sendPageSerial();
-      } else if (command == "turn_on;") { //this compares catched string vs. expected command string
+      } else if (command == F("turn_on;")) { //this compares catched string vs. expected command string
         turnOnHvac();
-      } else if (command == "turn_off;") { //this compares catched string vs. expected command string
+      } else if (command == F("turn_off;")) { //this compares catched string vs. expected command string
         turnOffHvac();
-      } else if (command == "delay_time:") { //this compares catched string vs. expected command string
+      } else if (command == F("delay_time:")) { //this compares catched string vs. expected command string
         changeDelayTime();
       }
       
@@ -136,15 +136,15 @@ void receiveCommands() {
 }
 
 void turnOnHvac() {
-//  if (true == hvacPower) {
-//    master.println(F("already_on;"));
-//  } else {
+  if (true == hvacPower) {
+    master.println(F("already_on;"));
+  } else {
     master.println(F("turning_on;"));
     // send IR signal to HVAC device:
     irSender.sendCommand(0);
     // update HVAC state's variable:
     hvacPower = true;
-//  }
+  }
 }
 
 void turnOffHvac() {
