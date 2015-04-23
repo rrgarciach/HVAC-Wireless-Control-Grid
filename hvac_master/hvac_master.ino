@@ -31,6 +31,7 @@ uint8_t pin222A = 2;
 HvacScout* scouts[10] = {};
 int scoutArraySize = 10;
 String scoutGroups[5] = {"Group 1","Group 2","Group 3","Group 4","Group 5"};
+int scoutGroupsArraySize = 5;
 int pinsRxTx[10][3] = {
                         {11,23,34},
                         {12,24,35},
@@ -103,8 +104,43 @@ bool setHvacScout(String name, uint8_t slot) {
 void setHvacGroup(uint8_t scoutId, int8_t groupId) {
 	scouts[scoutId]->setGroupId(groupId);
 }
+void setGroupName(int8_t groupId, String name) {
+	scoutGroups[groupId] = name;
+}
+String getGroupName(int8_t groupId) {
+	return scoutGroups[groupId];
+}
+String groupToJson(int index) {
+	String jsonObj;
+	jsonObj += F("{");
+	jsonObj += F("\"id\":");
+	jsonObj += index;
+	jsonObj += F(",");
+	jsonObj += F("\"name\":");
+	jsonObj += scoutGroups[index];
+	jsonObj += F("}");
+	return jsonObj;
+}
+String scoutGroupsToJson() {
+	String jsonArr;
+	jsonArr += F("[");
+	for (int i = 0; i < scoutGroupsArraySize; i++) {
+		jsonArr += groupToJson(i);
+		jsonArr += F(",");
+	}
+	jsonArr += F("]");
+	return jsonArr;
+}
+void triggerScoutGroup(int8_t groupId, void action(HvacScout* scout), HvacScout* scout) {
+	for (int i = 0; i < scoutArraySize; i++) {
+        if (scouts[i] == NULL) continue;
+        if (scouts[i]->getGroupId() == groupId) {
+			action(scout);
+        }
+    }
+}
 
-int getScout(String name) {
+int getScoutFromId(String name) {
     for (int i = 0; i < scoutArraySize; i++) {
         if (scouts[i] == NULL) continue;
         if (scouts[i]->getName() == name) {
