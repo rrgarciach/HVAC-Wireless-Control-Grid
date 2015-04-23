@@ -137,7 +137,6 @@ String scoutToJson(HvacScout* scout, int index) {
 	jsonObj += F("}");
 	return jsonObj;
 }
-
 String scoutsToJson() {
 	String jsonArr;
 	jsonArr += F("[");
@@ -247,29 +246,23 @@ void checkForScouts() {
 		delay(50);
 		scouts[i]->serial->println(F("getScouts;"));
 		delay(1500);
-		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-		if ( message == F("data") ) {
-			Serial.println();
-			Serial.print(F("ACTION: reading data from scout "));
-			Serial.println( scouts[i]->getName() );
+		while ( scouts[i]->serial->available() ) {
+			message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+			if ( message == F("data") ) {
+				Serial.println();
+				Serial.print(F("ACTION: reading data from scout "));
+				Serial.println( scouts[i]->getName() );
+			} else if ( message == F("temp") ) {
+				readTempFromHvacScout(scouts[i]);
+			} else if ( message == F("delay_time") ) {
+				readDelayTimeFromHvacScout(scouts[i]);
+			} else if ( message == F("quiet") ) {
+				readQuietFromHvacScout(scouts[i]);
+			} else if ( message == F("power") ) {
+				readPowerFromHvacScout(scouts[i]);
+			}
+			scouts[i]->end();
 		}
-		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-		if ( message == F("temp") ) {
-			readTempFromHvacScout(scouts[i]);
-		}
-		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-		if ( message == F("delay_time") ) {
-			readDelayTimeFromHvacScout(scouts[i]);
-		}
-		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-		if ( message == F("quiet") ) {
-			readQuietFromHvacScout(scouts[i]);
-		}
-		message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-		if ( message == F("power") ) {
-			readPowerFromHvacScout(scouts[i]);
-		}
-		scouts[i]->end();
     }
 }
 
@@ -280,10 +273,11 @@ void checkForMobile() {
       String message;
     while ( Serial2.available() ) {
         // on command setHvacScout:
-		if ( readCommandFromHardwareSerial(Serial2, F("getHvacScouts"), ';') ) {
+		message = readArgumentFromHardwareSerial(Serial2, ';');
+		} else if ( message == F("getHvacScouts") ) {
 			Serial.println(F("Sending JSON of Scouts:"));
 			Serial2.println(scoutsToJson());
-        } else if ( readCommandFromHardwareSerial(Serial2, F("setHvacScout"), ';') ) {
+        } else if ( message == F("setHvacScout") ) {
             // Read stream for name:
             String name = readArgumentFromHardwareSerial(Serial2,';');
             if (name == "") {
@@ -317,7 +311,7 @@ void checkForMobile() {
                 Serial.println(F("ERROR: unable to create scout."));
                 Serial2.println(F("Error\(0\)"));
             }
-		} else if ( readCommandFromHardwareSerial(Serial2, F("setHvacGroup"), ':') ) {
+		} else if ( message == F("setHvacGroup") ) {
 			Serial.println(F("Setting HVAC group:"));
 			// Read groupId:
 			uint8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
