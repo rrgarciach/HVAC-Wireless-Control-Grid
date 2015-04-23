@@ -30,17 +30,17 @@ uint8_t pin222A = 2;
 #define pinBtTxMobile 22
 HvacScout* scouts[10] = {};
 int scoutArraySize = 10;
-int pinsRxTx[10][2] = {
-                        {11,23},
-                        {12,24},
-                        {13,25},
-                        {62,26},
-                        {63,27},
-                        {64,28},
-                        {65,29},
-                        {66,30},
-                        {67,31},
-                        {68,32},
+int pinsRxTx[10][3] = {
+                        {11,23,34},
+                        {12,24,35},
+                        {13,25,36},
+                        {62,26,37},
+                        {63,27,38},
+                        {64,28,39},
+                        {65,29,40},
+                        {66,30,41},
+                        {67,31,42},
+                        {68,32,43},
                     };
 #else // everything else
 #error "unknown MCU or not enough memory"
@@ -63,7 +63,8 @@ void setup() {
     // Open serial communications and wait for port to open:
     mobile.begin(9600);
     Serial.begin(9600);
-	setHvacScout("ScoutPrueba00",0,3);
+	setHvacScout("ScoutPrueba00",0);
+	setHvacScout("Android",1);
     // start Bluetooth's SPP protocol:
     startSPP();
   
@@ -76,32 +77,27 @@ void setup() {
 
 void loop() {
     // read each HVAC Scout data:
-//    checkForScouts();
+    if (millis() % 1000 == 0) checkForScouts();
     // check if is there any Mobile command:
-//    checkForMobile();
-	
-	while ( mobile.available() ) {
-  		Serial.println(F("ACTION: checkForMobile: on while"));
-        srl = mobile.read();
-        Serial.print(srl);
-		delay(50);
-	}
-	
+    if (millis() % 1000 == 0) checkForMobile();
     // listen for incoming clients:
 //    checkForEthernet();
 }
 
-bool setHvacScout(String name, uint8_t slot, uint8_t pinKey) {
-    for (int i = 0; i < scoutArraySize; i++) {
-        if (scouts[i] == NULL) {
-            scouts[i] = new HvacScout(name, pinsRxTx[slot][0], pinsRxTx[slot][1], pinKey, pin222A);
-            scouts[i]->startSPP();
-            scouts[i]->start();
-            return true;
-        }
-    }
-    Serial.println(F("ERROR: No space available for a new Scout."));
-    return false;
+bool setHvacScout(String name, uint8_t slot) {
+//    for (int i = 0; i < scoutArraySize; i++) {
+//        if (scouts[i] == NULL) {
+//            scouts[i] = new HvacScout(name, pinsRxTx[slot][0], pinsRxTx[slot][1], pinKey, pin222A);
+//            scouts[i]->startSPP();
+//			scouts[i]->start();
+//            return true;
+//        }
+//    }
+	scouts[slot] = new HvacScout(name, pinsRxTx[slot][0], pinsRxTx[slot][1], pinsRxTx[slot][2], pin222A);
+	scouts[slot]->startSPP();
+//	scouts[slot]->start();
+//    Serial.println(F("ERROR: No space available for a new Scout."));
+//    return false;
 }
 
 int getScout(String name) {
@@ -143,7 +139,7 @@ String scoutToJson(HvacScout* scout, int index) {
 	return jsonObj;
 }
 
-String scoutsToJson(HvacScout* scouts[]) {
+String scoutsToJson() {
 	String jsonArr;
 	jsonArr += "[";
 	for (int i = 0; i < scoutArraySize; i++) {
@@ -245,6 +241,10 @@ void checkForScouts() {
     for (int i = 0; i < scoutArraySize; i++) {
         // If slot is NULL, step over:
         if (scouts[i] == NULL) continue;
+		scouts[i]->start();
+		delay(50);
+		scouts[i]->serial->println(F("getScouts;"));
+		delay(1500);
         if ( scouts[i]->serial->available() ) {
             while ( scouts[i]->serial->available() ) {
               srl = scouts[i]->serial->read();
@@ -275,17 +275,16 @@ void checkForScouts() {
               }
             }
         }
+		scouts[i]->end();
     }
 }
 
 // Read commands from Mobile:
 void checkForMobile() {
-  Serial.println(F("ACTION: checkForMobile"));
+//  Serial.println(F("ACTION: checkForMobile"));
   if ( mobile.available() ) {
-  Serial.println(F("ACTION: checkForMobile: receiving data"));
       String message;
     while ( mobile.available() ) {
-  Serial.println(F("ACTION: checkForMobile: on while"));
         srl = mobile.read();
         message += srl;
         Serial.print(srl);
@@ -341,7 +340,7 @@ void checkForMobile() {
                 mobile.println(F("Error\(1\)"));
             }
             // Create HVAC Scout:
-			bool result = setHvacScout(name,slot,key);
+			bool result = setHvacScout(name,slot);
             if (result == true) {
                 Serial.println(F("SUCCESS: Scout created."));
                 mobile.println(F("OK"));
@@ -351,7 +350,7 @@ void checkForMobile() {
             }
         } else if (message == "getHvacScouts:") {
 			Serial.println(F("Sending JSON of Scouts:"));
-			mobile.println(scoutsToJson(scouts));
+			mobile.println(scoutsToJson());
 		}
     }
   }
