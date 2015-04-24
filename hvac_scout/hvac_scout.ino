@@ -1,5 +1,6 @@
 #include <SoftwareSerial.h>
 #include <IRSignalSender.h>
+#include <DHT.h>
 //#include "EmonLib.h" // Include Emon Library (current sensor)
 
 // Definition of digital pins:
@@ -8,10 +9,10 @@
 // in HC-06 pin 3 goes to BT's TX 
 #define pinBtRx 2
 #define pinBtTx 3
-#define pinPIR 4
+#define pinPIR 5
 #define pinRedLed 12
 #define pinIRLed 13
-#define pinLM35 0
+#define DHTPIN 4
 #define pinCurrent 1
 
 SoftwareSerial master(pinBtRx, pinBtTx);
@@ -27,17 +28,20 @@ bool booPIR = false;
 bool booQuietZone = false;
 bool hvacPower = false;
 
-uint8_t tempCurrent = 0;
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+uint8_t temperatureCurrent = 0;
+uint8_t humidityCurrent = 0;
 
 uint32_t timestampLastEvent = 0;
 uint32_t timeDelayThreshold = 900000; // 900 seconds (15 minutes).
 uint32_t timeElapsed;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   master.begin(9600);
   pinMode(pinPIR, INPUT);
-  pinMode(pinLM35, INPUT);
+  dht.begin();
   pinMode(pinRedLed, OUTPUT);
 //  emon1.current(pinCurrent, 6.7); // Current: input pin, calibration (current sensor)
   Serial.println(F("Beginning..."));
@@ -78,7 +82,8 @@ void updateStates() {
   
   // Temperature functionality:
   // Read temperature:
-  tempCurrent = ( (5.0 * analogRead(pinLM35)*100.0)/1024.0 );
+  temperatureCurrent = dht.readTemperature();
+  humidityCurrent = dht.readHumidity();
 }
 
 // Function to react/trigger physical controls:
@@ -92,24 +97,45 @@ void react() {
 void sendPageSerial() {
   Serial.println(F("Sending page serial:"));
   master.print(F("data:"));
+  Serial.print(F("data:"));
   // send temperature:
-  master.print(F("temp:"));
-  master.print(tempCurrent);
+  master.print(F("temperature:"));
+  master.print(temperatureCurrent);
   master.print(F(";"));
+  Serial.print(F("temperature:"));
+  Serial.print(temperatureCurrent);
+  Serial.print(F(";"));
+  // send humidity:
+  master.print(F("humidity:"));
+  master.print(humidityCurrent);
+  master.print(F(";"));
+  Serial.print(F("humidity:"));
+  Serial.print(humidityCurrent);
+  Serial.print(F(";"));
   // send delaytime:
-  master.print(F("delay_time:"));
+  master.print(F("delayTime:"));
   master.print(timeDelayThreshold / 1000);
   master.print(F(";"));
+  Serial.print(F("delayTime:"));
+  Serial.print(timeDelayThreshold / 1000);
+  Serial.print(F(";"));
   // send quiet zone:
   master.print(F("quiet:"));
   master.print(booQuietZone);
   master.print(F(";"));
+  Serial.print(F("quiet:"));
+  Serial.print(booQuietZone);
+  Serial.print(F(";"));
   // send HVAC power state:
   master.print(F("power:"));
   master.print(hvacPower);
   master.print(F(";"));
+  Serial.print(F("power:"));
+  Serial.print(hvacPower);
+  Serial.print(F(";"));
   // terminate serial line:
   master.println();
+  Serial.println();
 }
 
 void receiveCommands() {
@@ -118,16 +144,17 @@ void receiveCommands() {
     String command; //string to store entire command line
     while ( master.available() ) {
       srl = master.read();
+		Serial.print(srl);
       delay(50);
       command += srl; //iterates char into string
       
-      if (command == F("getScouts;")) { //this compares catched string vs. expected command string
+      if (command == F("getScout;")) { //this compares catched string vs. expected command string
         sendPageSerial();
-      } else if (command == F("turn_on;")) { //this compares catched string vs. expected command string
+      } else if (command == F("turnOn;")) { //this compares catched string vs. expected command string
         turnOnHvac();
-      } else if (command == F("turn_off;")) { //this compares catched string vs. expected command string
+      } else if (command == F("turnOff;")) { //this compares catched string vs. expected command string
         turnOffHvac();
-      } else if (command == F("delay_time:")) { //this compares catched string vs. expected command string
+      } else if (command == F("setDelayTime:")) { //this compares catched string vs. expected command string
         changeDelayTime();
       }
       
@@ -136,48 +163,61 @@ void receiveCommands() {
 }
 
 void turnOnHvac() {
+master.println(F("turnOnHvac;"));
   if (true == hvacPower) {
     master.println(F("already_on;"));
+    Serial.println(F("already_on;"));
   } else {
     master.println(F("turning_on;"));
+    Serial.println(F("turning_on;"));
     // send IR signal to HVAC device:
     irSender.sendCommand(0);
     // update HVAC state's variable:
     hvacPower = true;
+	  master.println(F("OK;"));
   }
 }
 
 void turnOffHvac() {
+    master.println(F("turnOffHvac;"));
 //  if (false == hvacPower) {
 //    master.println(F("already_off;"));
 //  } else {
     master.println(F("turning_off;"));
+    Serial.println(F("turning_off;"));
     // send IR signal to HVAC device:
     irSender.sendCommand(1);
     // update HVAC state's variable:
     hvacPower = false;
+	master.println(F("OK;"));
 //  }
 }
 
 void changeDelayTime() {
-  while ( !master.available() ) {}
-  String strValue; //string to store entire command line
-  if ( master.available() ) {
-    while ( master.available() ) {
-      srl = master.read();
-      if (srl == ';') break;
-      strValue += srl; //iterates char into string
-      delay(50);
-    }
-  }
-    uint16_t intValue = strValue.toInt();
+	Serial.print(F("changeDelayTime:"));
+    uint16_t intValue = readArgumentFromSoftwareSerial(master,';').toInt();
     if (intValue > 0) {
+		Serial.println(intValue);
         timeDelayThreshold = intValue;
         timeDelayThreshold *= 1000;
-        master.print(F("OK"));
+        master.println(F("OK;"));
         delay(50);
     } else {
-        master.print(F("ERROR\(1\)"));
+        master.println(F("ERROR:1;"));
         delay(50);
     }
+}
+
+String readArgumentFromSoftwareSerial(SoftwareSerial &serial, char terminator)
+{
+	String argument;
+	char c;
+	while ( serial.available() ) {
+		c = serial.read();
+		Serial.print(c);
+		delay(50);
+		if (c == terminator) break;
+		argument += c;
+	}
+	return argument;
 }
