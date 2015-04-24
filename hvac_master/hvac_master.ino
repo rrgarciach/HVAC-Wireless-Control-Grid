@@ -176,9 +176,9 @@ String scoutToJson(HvacScout* scout, int index) {
 	jsonObj += F("\"id\":");
 	jsonObj += index;
 	jsonObj += F(",");
-	jsonObj += F("\"name\":");
+	jsonObj += F("\"name\":\"");
 	jsonObj += scout->getName();
-	jsonObj += F(",");
+	jsonObj += F("\",");
 	jsonObj += F("\"temperature\":");
 	jsonObj += scout->getTemperature();
 	jsonObj += F(",");
@@ -206,9 +206,12 @@ String scoutsToJson() {
 	String jsonArr;
 	jsonArr += F("[");
 	for (int i = 0; i < scoutArraySize; i++) {
+		// If scout slot is not NULL, print include it in JSON:
 		if (scouts[i] != NULL) {
 			jsonArr += scoutToJson(scouts[i],i);
-			jsonArr += F(",");
+			// If it's not the last one, add the comma separator
+			if (scouts[i+1] != NULL)
+				jsonArr += F(",");
 		}
 	}
 	jsonArr += F("]");
