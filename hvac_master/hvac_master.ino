@@ -65,7 +65,7 @@ void setup() {
     // Open serial communications and wait for port to open:
     Serial2.begin(9600);
     Serial.begin(9600);
-	setHvacScout("ScoutPrueba00",0);
+	setNewHvacScout("ScoutPrueba00",0);
     // start Bluetooth's SPP protocol:
     startSPP();
   
@@ -85,7 +85,7 @@ void loop() {
 //    checkForEthernet();
 }
 
-bool setHvacScout(String name, uint8_t slot) {
+bool setNewHvacScout(String name, uint8_t slot) {
 //    for (int i = 0; i < scoutArraySize; i++) {
 //        if (scouts[i] == NULL) {
 //            scouts[i] = new HvacScout(name, pinsRxTx[slot][0], pinsRxTx[slot][1], pinKey, pin222A);
@@ -131,24 +131,41 @@ String scoutGroupsToJson() {
 	jsonArr += F("]");
 	return jsonArr;
 }
-void triggerScoutGroup(int8_t groupId, void action(HvacScout* scout), HvacScout* scout) {
+void triggerScoutGroup(int8_t groupId, String action) {
 	for (int i = 0; i < scoutArraySize; i++) {
         if (scouts[i] == NULL) continue;
         if (scouts[i]->getGroupId() == groupId) {
-			action(scout);
+			if (action == F("turnOn")) scouts[i]->setPower(true);
+			else if (action == F("turnOff")) scouts[i]->setPower(false);
+			else if (action == F("autoOn")) scouts[i]->setAutomatic(true);
+			else if (action == F("autoOff")) scouts[i]->setAutomatic(false);
+        }
+    }
+}
+void setValueForScoutGroupFromHardwareSerial(int8_t groupId, String action, HardwareSerial &serial) {
+	for (int i = 0; i < scoutArraySize; i++) {
+        if (scouts[i] == NULL) continue;
+        if (scouts[i]->getGroupId() == groupId) {
+			if (action == F("setDelayTime")) {
+				uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+				scouts[i]->setDelayTime(value);
+			} else if (action == F("setMaxTemperature")) {
+				uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+				scouts[i]->setMaxTemperature(value);
+			}
         }
     }
 }
 
-int getScoutFromId(String name) {
-    for (int i = 0; i < scoutArraySize; i++) {
-        if (scouts[i] == NULL) continue;
-        if (scouts[i]->getName() == name) {
-            return i;
-        }
-    }
-    return 404;
-}
+//int getScoutFromId(String name) {
+//    for (int i = 0; i < scoutArraySize; i++) {
+//        if (scouts[i] == NULL) continue;
+//        if (scouts[i]->getName() == name) {
+//            return i;
+//        }
+//    }
+//    return 404;
+//}
 
 String scoutToJson(HvacScout* scout, int index) {
 	String jsonObj;
@@ -185,6 +202,21 @@ String scoutsToJson() {
 	jsonArr += F("]");
 	return jsonArr;
 }
+void triggerScout(int8_t scoutId, String action) {
+	if (action == F("turnOn")) scouts[scoutId]->setPower(true);
+	else if (action == F("turnOff")) scouts[scoutId]->setPower(false);
+	else if (action == F("autoOn")) scouts[scoutId]->setAutomatic(true);
+	else if (action == F("autoOff")) scouts[scoutId]->setAutomatic(false);
+}
+void setValueForScoutFromHardwareSerial(int8_t scoutId, String action, HardwareSerial &serial) {
+	if (action == F("setDelayTime")) {
+		uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+		scouts[scoutId]->setDelayTime(value);
+	} else if (action == F("setMaxTemperature")) {
+		uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+		scouts[scoutId]->setMaxTemperature(value);
+	}
+}
 
 void startSPP() {
 	Serial.print(F("size of array: "));
@@ -208,6 +240,224 @@ void getTime() {
 }
 // @TODO
 void setTime(uint8_t hours, uint8_t minutes) {
+}
+
+// Read commands from Mobile:
+void checkForMobile() {
+//  Serial.println(F("ACTION: checkForMobile"));
+  if ( Serial2.available() ) {
+      String message;
+    while ( Serial2.available() ) {
+        // on command setNewHvacScout:
+		message = readArgumentFromHardwareSerial(Serial2, ';');
+		if ( message == F("getHvacScouts") ) {
+			Serial.println(F("Sending JSON of Scouts:"));
+			Serial2.println(scoutsToJson());
+        } else if ( message == F("setNewHvacScout") ) {
+            // Read stream for name:
+            String name = readArgumentFromHardwareSerial(Serial2,';');
+            if (name == "") {
+                Serial.println(F("ERROR: wrong name value."));
+                Serial2.println(F("Error\(1\)"));
+            }
+            // Read stream for slot:
+            uint8_t slot = readArgumentFromHardwareSerial(Serial2,';').toInt();
+            if (slot < 0 || slot > 9) {
+                Serial.println(F("ERROR: wrong slot value."));
+                Serial2.println(F("Error\(1\)"));
+            }
+            // Read stream for key:
+            uint8_t key = readArgumentFromHardwareSerial(Serial2,';').toInt();
+            if (key == 0) {
+                Serial.println(F("ERROR: wrong key value."));
+                Serial2.println(F("Error\(1\)"));
+            }
+            // Read stream for VCC:
+            uint8_t vcc = readArgumentFromHardwareSerial(Serial2,';').toInt();
+            if (vcc == 0) {
+                Serial.println(F("ERROR: wrong vcc value."));
+                Serial2.println(F("Error\(1\)"));
+            }
+            // Create HVAC Scout:
+			bool result = setNewHvacScout(name,slot);
+            if (result == true) {
+                Serial.println(F("SUCCESS: Scout created."));
+                Serial2.println(F("OK"));
+            } else {
+                Serial.println(F("ERROR: unable to create scout."));
+                Serial2.println(F("Error\(0\)"));
+            }
+		} else if ( message == F("setHvacGroup") ) {
+			Serial.println(F("Setting HVAC group:"));
+			// Read groupId:
+			uint8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+            int8_t groupId = readArgumentFromHardwareSerial(Serial2,';').toInt();
+			if (scoutId > 9 || scoutId < 0) {
+                Serial.println(F("ERROR: wrong scoutId value."));
+                Serial2.println(F("Error\(1\)"));
+            } else {
+				if (groupId > 4 || groupId < -1) {
+					Serial.println(F("ERROR: wrong groupId value."));
+					Serial2.println(F("Error\(1\)"));
+				} else {
+					setHvacGroup(scoutId,groupId);
+					Serial.println(F("SUCCESS: Scout Group set."));
+					Serial2.println(F("OK"));
+				}
+			}
+		} else if ( message == F("triggerScout") ) {
+			Serial.print(F("Triggering Scout \""));
+			int8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			Serial.print( scouts[scoutId]->getName() );
+			Serial.println(F("\" :"));
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			triggerScout(scoutId,action);
+			
+		} else if ( message == F("setValueForScoutFromHardwareSerial") ) {
+			Serial.println(F("Setting Value for Scout Group \""));
+			int8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			Serial.print( scouts[scoutId]->getName() );
+			Serial.println(F("\" :"));
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			setValueForScoutFromHardwareSerial(scoutId,action,Serial2);
+			
+		} else if ( message == F("triggerScoutGroup") ) {
+			Serial.print(F("Triggering Scout Group \""));
+			int8_t groupId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			Serial.print(scoutGroups[groupId]);
+			Serial.println(F("\" :"));
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			triggerScoutGroup(groupId,action);
+			
+		} else if ( message == F("setValueForScoutGroupFromHardwareSerial") ) {
+			Serial.println(F("Setting Value for Scout Group \""));
+			int8_t groupId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			Serial.print(scoutGroups[groupId]);
+			Serial.println(F("\" :"));
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			setValueForScoutGroupFromHardwareSerial(groupId,action,Serial2);
+			
+		}
+    }
+  }
+}
+
+void checkForScouts() {
+//    Serial.println(F("ACTION: checkForScouts"));
+    String message; // String to process:
+    // Read each HVAC Scout to capture their states:
+    for (int i = 0 ; i < scoutArraySize ; i++) {
+        // If slot is NULL, step over:
+        if (scouts[i] == NULL) continue;
+		scouts[i]->start();
+		delay(50);
+		scouts[i]->serial->println(F("getScouts;"));
+		delay(1500);
+		while ( scouts[i]->serial->available() ) {
+			message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+			if ( message == F("data") ) {
+				Serial.println();
+				Serial.print(F("ACTION: reading data from scout "));
+				Serial.println( scouts[i]->getName() );
+				while ( scouts[i]->serial->available() ) {
+					message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+					if ( message == F("temp") ) {
+						readTempFromHvacScout(scouts[i]);
+					} else if ( message == F("delay_time") ) {
+						readDelayTimeFromHvacScout(scouts[i]);
+					} else if ( message == F("quiet") ) {
+						readQuietFromHvacScout(scouts[i]);
+					} else if ( message == F("power") ) {
+						readPowerFromHvacScout(scouts[i]);
+					}
+				}
+			} 
+			scouts[i]->end();
+		}
+    }
+}
+
+// Register here the automatic events/actions that you want to be triggered:
+void react() {
+	for (int i = 0 ; i < scoutArraySize ; i++) {
+        // If slot is NULL, step over:
+        if (scouts[i] == NULL) continue;
+		
+		// React if it's too hot:
+		if (true == scouts[i]->getAutomatic()) {
+			if (scouts[i]->getTemperature() > scouts[i]->getMaxTemperature()  
+				&& scouts[i]->getPower() == false) {
+				scouts[i]->setPower(true);
+			} else if (scouts[i]->getTemperature() < (scouts[i]->getTemperature() - 3) && scouts[i]->getPower() == true) {
+				// But if it got enough cold, turn off please:
+				scouts[i]->setPower(false);
+			}
+		}
+	}
+}
+
+void readTempFromHvacScout(HvacScout* scout) {
+	Serial.println(F("\nACTION: readTempFromHvacScout"));
+	uint8_t temperature = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
+    if (temperature > 0) {
+        scout->setTemperature( temperature );
+        Serial.println();
+        Serial.print( scout->getName() );
+        Serial.print(F(".temperature: "));
+        Serial.println( scout->getTemperature() );
+        delay(50);
+//        Serial2.println(F("OK"));
+    } else {
+        Serial.print(F("Error reading temperature from scout= "));
+        Serial.println( scout->getName() );
+        Serial2.println(F("Error\(2\)"));
+    }
+}
+
+void readDelayTimeFromHvacScout(HvacScout* scout) {
+  Serial.println(F("\nACTION: readDelayTimeFromHvacScout"));
+    uint16_t delayTime = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
+    if (delayTime > 0) {
+        scout->setDelayTime( delayTime );
+		Serial.println();
+        Serial.print( scout->getName() );
+        Serial.print(F(".delayTime: "));
+        Serial.println( scout->getDelayTime() );
+        delay(50);
+//        Serial2.println(F("OK"));
+    } else {
+        Serial.print(F("Error reading delay time from scout= "));
+        Serial.println( scout->getName() );
+        Serial2.println(F("Error\(2\)"));
+    }
+}
+
+void readQuietFromHvacScout(HvacScout* scout) {
+	Serial.println(F("\nACTION: readQuietFromHvacScout"));
+	bool quiet = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
+	scout->setQuiet( quiet );
+	Serial.println();
+	Serial.print( scout->getName() );
+	Serial.print(F(".quiet= "));
+	Serial.println( scout->getQuiet() );
+	delay(50);
+	//    Serial2.println(F("OK"));
+}
+
+void readPowerFromHvacScout(HvacScout* scout) {
+    Serial.println(F("\nACTION: readPowerFromHvacScout"));
+    bool power = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
+    scout->setPower( power );
+	Serial.println();
+    Serial.print( scout->getName() );
+    Serial.print(F(".power: "));
+    Serial.println( scout->getPower() );
+    delay(50);
+//    Serial2.println(F("OK"));
 }
 
 void checkForEthernet() {
@@ -269,165 +519,6 @@ void checkForEthernet() {
     client.stop();
     Serial.println(F("\nclient disconnected"));
   }
-}
-
-void checkForScouts() {
-//    Serial.println(F("ACTION: checkForScouts"));
-    String message; // String to process:
-    // Read each HVAC Scout to capture their states:
-    for (int i = 0 ; i < scoutArraySize ; i++) {
-        // If slot is NULL, step over:
-        if (scouts[i] == NULL) continue;
-		scouts[i]->start();
-		delay(50);
-		scouts[i]->serial->println(F("getScouts;"));
-		delay(1500);
-		while ( scouts[i]->serial->available() ) {
-			message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-			if ( message == F("data") ) {
-				Serial.println();
-				Serial.print(F("ACTION: reading data from scout "));
-				Serial.println( scouts[i]->getName() );
-			} else if ( message == F("temp") ) {
-				readTempFromHvacScout(scouts[i]);
-			} else if ( message == F("delay_time") ) {
-				readDelayTimeFromHvacScout(scouts[i]);
-			} else if ( message == F("quiet") ) {
-				readQuietFromHvacScout(scouts[i]);
-			} else if ( message == F("power") ) {
-				readPowerFromHvacScout(scouts[i]);
-			}
-			scouts[i]->end();
-		}
-    }
-}
-
-// Read commands from Mobile:
-void checkForMobile() {
-//  Serial.println(F("ACTION: checkForMobile"));
-  if ( Serial2.available() ) {
-      String message;
-    while ( Serial2.available() ) {
-        // on command setHvacScout:
-		message = readArgumentFromHardwareSerial(Serial2, ';');
-		} else if ( message == F("getHvacScouts") ) {
-			Serial.println(F("Sending JSON of Scouts:"));
-			Serial2.println(scoutsToJson());
-        } else if ( message == F("setHvacScout") ) {
-            // Read stream for name:
-            String name = readArgumentFromHardwareSerial(Serial2,';');
-            if (name == "") {
-                Serial.println(F("ERROR: wrong name value."));
-                Serial2.println(F("Error\(1\)"));
-            }
-            // Read stream for slot:
-            uint8_t slot = readArgumentFromHardwareSerial(Serial2,';').toInt();
-            if (slot < 0 || slot > 9) {
-                Serial.println(F("ERROR: wrong slot value."));
-                Serial2.println(F("Error\(1\)"));
-            }
-            // Read stream for key:
-            uint8_t key = readArgumentFromHardwareSerial(Serial2,';').toInt();
-            if (key == 0) {
-                Serial.println(F("ERROR: wrong key value."));
-                Serial2.println(F("Error\(1\)"));
-            }
-            // Read stream for VCC:
-            uint8_t vcc = readArgumentFromHardwareSerial(Serial2,';').toInt();
-            if (vcc == 0) {
-                Serial.println(F("ERROR: wrong vcc value."));
-                Serial2.println(F("Error\(1\)"));
-            }
-            // Create HVAC Scout:
-			bool result = setHvacScout(name,slot);
-            if (result == true) {
-                Serial.println(F("SUCCESS: Scout created."));
-                Serial2.println(F("OK"));
-            } else {
-                Serial.println(F("ERROR: unable to create scout."));
-                Serial2.println(F("Error\(0\)"));
-            }
-		} else if ( message == F("setHvacGroup") ) {
-			Serial.println(F("Setting HVAC group:"));
-			// Read groupId:
-			uint8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
-            int8_t groupId = readArgumentFromHardwareSerial(Serial2,';').toInt();
-			if (scoutId > 9 || scoutId < 0) {
-                Serial.println(F("ERROR: wrong scoutId value."));
-                Serial2.println(F("Error\(1\)"));
-            } else {
-				if (groupId > 4 || groupId < -1) {
-					Serial.println(F("ERROR: wrong groupId value."));
-					Serial2.println(F("Error\(1\)"));
-				} else {
-					setHvacGroup(scoutId,groupId);
-					Serial.println(F("SUCCESS: Scout Group set."));
-					Serial2.println(F("OK"));
-				}
-			}
-		}
-    }
-  }
-}
-
-void readTempFromHvacScout(HvacScout* scout) {
-	Serial.println(F("\nACTION: readTempFromHvacScout"));
-	uint8_t temperature = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
-    if (temperature > 0) {
-        scout->setTemperature( temperature );
-        Serial.println();
-        Serial.print( scout->getName() );
-        Serial.print(F(".temperature: "));
-        Serial.println( scout->getTemperature() );
-        delay(50);
-//        Serial2.println(F("OK"));
-    } else {
-        Serial.print(F("Error reading temperature from scout= "));
-        Serial.println( scout->getName() );
-        Serial2.println(F("Error\(2\)"));
-    }
-}
-
-void readDelayTimeFromHvacScout(HvacScout* scout) {
-  Serial.println(F("\nACTION: readDelayTimeFromHvacScout"));
-    uint16_t delayTime = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
-    if (delayTime > 0) {
-        scout->setDelayTime( delayTime );
-		Serial.println();
-        Serial.print( scout->getName() );
-        Serial.print(F(".delayTime: "));
-        Serial.println( scout->getDelayTime() );
-        delay(50);
-//        Serial2.println(F("OK"));
-    } else {
-        Serial.print(F("Error reading delay time from scout= "));
-        Serial.println( scout->getName() );
-        Serial2.println(F("Error\(2\)"));
-    }
-}
-
-void readQuietFromHvacScout(HvacScout* scout) {
-	Serial.println(F("\nACTION: readQuietFromHvacScout"));
-	bool quiet = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
-	scout->setQuiet( quiet );
-	Serial.println();
-	Serial.print( scout->getName() );
-	Serial.print(F(".quiet= "));
-	Serial.println( scout->getQuiet() );
-	delay(50);
-	//    Serial2.println(F("OK"));
-}
-
-void readPowerFromHvacScout(HvacScout* scout) {
-    Serial.println(F("\nACTION: readPowerFromHvacScout"));
-    bool power = readArgumentFromSoftwareSerial(scout->serial,';').toInt();
-    scout->setPower( power );
-	Serial.println();
-    Serial.print( scout->getName() );
-    Serial.print(F(".power: "));
-    Serial.println( scout->getPower() );
-    delay(50);
-//    Serial2.println(F("OK"));
 }
 
 void readGET(EthernetClient &client) {
