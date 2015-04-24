@@ -64,8 +64,8 @@ void setup() {
   
     // Open serial communications and wait for port to open:
     Serial2.begin(9600);
-    Serial.begin(9600);
-	setNewHvacScout("ScoutPrueba00",0);
+    Serial.begin(115200);
+//	setNewHvacScout("ScoutPrueba00",0);
     // start Bluetooth's SPP protocol:
     startSPP();
   
