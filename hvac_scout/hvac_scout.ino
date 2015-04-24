@@ -154,7 +154,7 @@ void receiveCommands() {
         turnOnHvac();
       } else if (command == F("turnOff;")) { //this compares catched string vs. expected command string
         turnOffHvac();
-      } else if (command == F("setDelayTime:")) { //this compares catched string vs. expected command string
+      } else if (command == F("changeDelayTime:")) { //this compares catched string vs. expected command string
         changeDelayTime();
       }
       

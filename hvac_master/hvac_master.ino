@@ -309,38 +309,42 @@ void checkForMobile() {
 				}
 			}
 		} else if ( message == F("triggerScout") ) {
-			Serial.print(F("Triggering Scout \""));
 			int8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			Serial.print(F("Triggering Scout \""));
 			Serial.print( scouts[scoutId]->getName() );
 			Serial.println(F("\" :"));
-			String action = readArgumentFromHardwareSerial(Serial2,';');
 			
 			triggerScout(scoutId,action);
 			
 		} else if ( message == F("setValueForScoutFromHardwareSerial") ) {
-			Serial.print(F("Setting Value for Scout \""));
 			int8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			Serial.print(F("Setting Value for Scout \""));
 			Serial.print( scouts[scoutId]->getName() );
 			Serial.println(F("\" :"));
-			String action = readArgumentFromHardwareSerial(Serial2,';');
 			
 			setValueForScoutFromHardwareSerial(scoutId,action,Serial2);
 			
 		} else if ( message == F("triggerScoutGroup") ) {
-			Serial.print(F("Triggering Scout Group \""));
 			int8_t groupId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			Serial.print(F("Triggering Scout Group \""));
 			Serial.print(scoutGroups[groupId]);
 			Serial.println(F("\" :"));
-			String action = readArgumentFromHardwareSerial(Serial2,';');
 			
 			triggerScoutGroup(groupId,action);
 			
 		} else if ( message == F("setValueForScoutGroupFromHardwareSerial") ) {
-			Serial.print(F("Setting Value for Scout Group \""));
 			int8_t groupId = readArgumentFromHardwareSerial(Serial2,',').toInt();
+			String action = readArgumentFromHardwareSerial(Serial2,';');
+			
+			Serial.print(F("Setting Value for Scout Group \""));
 			Serial.print(scoutGroups[groupId]);
 			Serial.println(F("\" :"));
-			String action = readArgumentFromHardwareSerial(Serial2,';');
 			
 			setValueForScoutGroupFromHardwareSerial(groupId,action,Serial2);
 			
@@ -419,7 +423,10 @@ void readTempFromHvacScout(HvacScout* scout) {
     } else {
         Serial.print(F("Error reading temperature from scout= "));
         Serial.println( scout->getName() );
-        Serial2.println(F("Error\(2\)"));
+        Serial2.print(F("Error:2 on "));
+        Serial2.print( scout->getName() );
+		Serial2.print(F(" when reading temperature from scout"));
+        Serial2.println(F(";"));
     }
 }
 
@@ -437,7 +444,10 @@ void readHumidityFromHvacScout(HvacScout* scout) {
     } else {
         Serial.print(F("Error reading humidity from scout= "));
         Serial.println( scout->getName() );
-        Serial2.println(F("Error\(2\)"));
+        Serial2.print(F("Error:2 on "));
+        Serial2.print( scout->getName() );
+		Serial2.print(F(" when reading humidity from scout"));
+        Serial2.println(F(";"));
     }
 }
 
@@ -453,9 +463,12 @@ void readDelayTimeFromHvacScout(HvacScout* scout) {
         delay(50);
 //        Serial2.println(F("OK"));
     } else {
-        Serial.print(F("Error reading delay time from scout= "));
+        Serial.print(F("Error reading delayTime from scout= "));
         Serial.println( scout->getName() );
-        Serial2.println(F("Error\(2\)"));
+        Serial2.print(F("Error:2 on "));
+        Serial2.print( scout->getName() );
+        Serial2.print(F(" when reading delayTime from scout"));
+        Serial2.println(F(";"));
     }
 }
 
