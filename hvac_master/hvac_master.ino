@@ -267,7 +267,9 @@ void checkForMobile() {
 		message = readArgumentFromHardwareSerial(Serial2, ';');
 		if ( message == F("getHvacScouts") ) {
 			Serial.println(F("Sending JSON of Scouts:"));
-			Serial2.println(scoutsToJson());
+			String scouts = scoutsToJson();
+			Serial.println(scouts);
+			Serial2.println(scouts);
         } else if ( message == F("setNewHvacScout") ) {
             // Read stream for name:
             String name = readArgumentFromHardwareSerial(Serial2,',');
