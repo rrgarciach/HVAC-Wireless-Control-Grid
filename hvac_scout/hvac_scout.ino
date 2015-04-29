@@ -39,7 +39,7 @@ uint32_t timeElapsed;
 
 void setup() {
   Serial.begin(115200);
-  master.begin(9600);
+  master.begin(38400);
   pinMode(pinPIR, INPUT);
   dht.begin();
   pinMode(pinRedLed, OUTPUT);

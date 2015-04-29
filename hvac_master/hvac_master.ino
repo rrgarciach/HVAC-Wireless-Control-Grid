@@ -63,9 +63,12 @@ void setup() {
     digitalWrite(pinSSD, HIGH);
   
     // Open serial communications and wait for port to open:
-    Serial2.begin(9600);
+    Serial2.begin(115200);
     Serial.begin(115200);
-//	setNewHvacScout("ScoutPrueba00",0);
+	setNewHvacScout("ScoutPrueba00",0);
+//	setNewHvacScout("escautcito",1);
+//	setNewHvacScout("lalalalla",2);
+//	setNewHvacScout("pancrasio scout",3);
     // start Bluetooth's SPP protocol:
     startSPP();
   
@@ -119,9 +122,9 @@ String groupToJson(int index) {
 	jsonObj += F("\"id\":");
 	jsonObj += index;
 	jsonObj += F(",");
-	jsonObj += F("\"name\":");
+	jsonObj += F("\"name\":\"");
 	jsonObj += scoutGroups[index];
-	jsonObj += F("}");
+	jsonObj += F("\"}");
 	return jsonObj;
 }
 String scoutGroupsToJson() {
@@ -129,7 +132,8 @@ String scoutGroupsToJson() {
 	jsonArr += F("[");
 	for (int i = 0; i < scoutGroupsArraySize; i++) {
 		jsonArr += groupToJson(i);
-		jsonArr += F(",");
+		if (scoutGroups[i+1] != NULL)
+			jsonArr += F(",");
 	}
 	jsonArr += F("]");
 	return jsonArr;
@@ -175,6 +179,9 @@ String scoutToJson(HvacScout* scout, int index) {
 	jsonObj += F("{");
 	jsonObj += F("\"id\":");
 	jsonObj += index;
+	jsonObj += F(",");
+	jsonObj += F("\"groupId\":");
+	jsonObj += scout->getGroupId();
 	jsonObj += F(",");
 	jsonObj += F("\"name\":\"");
 	jsonObj += scout->getName();
@@ -224,8 +231,12 @@ void triggerScout(int8_t scoutId, String action) {
 	else if (action == F("autoOff")) scouts[scoutId]->setAutomatic(false);
 }
 void setValueForScoutFromHardwareSerial(int8_t scoutId, String action, HardwareSerial &serial) {
+	// Give time to read Serial buffer:
+//	delay(500);
 	if (action == F("changeDelayTime")) {
-		uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+		int value = readArgumentFromHardwareSerial(serial,';').toInt();
+		Serial.print("value: ");
+		Serial.println(value);
 		scouts[scoutId]->changeDelayTime(value);
 	} else if (action == F("setMaxTemperature")) {
 		uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
@@ -265,11 +276,26 @@ void checkForMobile() {
     while ( Serial2.available() ) {
         // on command setNewHvacScout:
 		message = readArgumentFromHardwareSerial(Serial2, ';');
-		if ( message == F("getHvacScouts") ) {
+		if ( message == F("getFullState") ) {
+			Serial.println(F("Sending JSON of Full State:"));
+			String fullState;
+			fullState += "{\"scouts\":";
+			fullState += scoutsToJson();
+			fullState += ",\"groups\":";
+			fullState += scoutGroupsToJson();
+			fullState += "}";
+			Serial.println(fullState);
+			Serial2.println(fullState);
+        } else if ( message == F("getHvacScouts") ) {
 			Serial.println(F("Sending JSON of Scouts:"));
 			String scouts = scoutsToJson();
 			Serial.println(scouts);
 			Serial2.println(scouts);
+        } else if ( message == F("getHvacScoutsGroups") ) {
+			Serial.println(F("Sending JSON of Groups:"));
+			String groups = scoutGroupsToJson();
+			Serial.println(groups);
+			Serial2.println(groups);
         } else if ( message == F("setNewHvacScout") ) {
             // Read stream for name:
             String name = readArgumentFromHardwareSerial(Serial2,',');
@@ -320,7 +346,7 @@ void checkForMobile() {
 			
 			triggerScout(scoutId,action);
 			
-		} else if ( message == F("setValueForScoutFromHardwareSerial") ) {
+		} else if ( message == F("setValScoutFHS") ) {
 			int8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
 			String action = readArgumentFromHardwareSerial(Serial2,';');
 			
