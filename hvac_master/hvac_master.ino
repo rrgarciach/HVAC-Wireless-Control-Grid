@@ -159,6 +159,10 @@ void setValueForScoutGroupFromHardwareSerial(int8_t groupId, String action, Hard
 			} else if (action == F("setMaxTemperature")) {
 				uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
 				scouts[i]->setMaxTemperature(value);
+			} else if (action == F("groupId")) {
+				Serial.println("CHANGING GROUP ID!!!");
+				int8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+				scouts[i]->setGroupId(value);
 			}
         }
     }
@@ -320,6 +324,44 @@ void checkForMobile() {
             } else {
                 Serial.println(F("ERROR: unable to create scout."));
                 Serial2.println(F("Error\(0\)"));
+            }
+		} else if ( message == F("setScoutName") ) {
+            // Read stream for name:
+            String name = readArgumentFromHardwareSerial(Serial2,',');
+            if (name == "") {
+                Serial.println(F("ERROR: wrong name value."));
+                Serial2.println(F("Error:1"));
+            }
+            // Read stream for slot:
+            uint8_t slot = readArgumentFromHardwareSerial(Serial2,';').toInt();
+            if (slot < 0 || slot > 9) {
+                Serial.println(F("ERROR: wrong slot value."));
+                Serial2.println(F("Error:1"));
+            }
+            // Create HVAC Scout:
+			bool result = setScoutName(name,slot);
+            if (result == true) {
+                Serial.println(F("SUCCESS: Scout's name changed."));
+                Serial2.println(F("OK"));
+            } else {
+                Serial.println(F("ERROR: unable to change scout's name."));
+                Serial2.println(F("Error:0"));
+            }
+		} else if ( message == F("setNewHvacScout") ) {
+            // Read stream for slot:
+            uint8_t slot = readArgumentFromHardwareSerial(Serial2,';').toInt();
+            if (slot < 0 || slot > 9) {
+                Serial.println(F("ERROR: wrong slot value."));
+                Serial2.println(F("Error\(1\)"));
+            }
+            // Create HVAC Scout:
+			bool result = unsetNewHvacScout(slot);
+            if (result == true) {
+                Serial.println(F("SUCCESS: Scout removed."));
+                Serial2.println(F("OK"));
+            } else {
+                Serial.println(F("ERROR: unable to remove scout."));
+                Serial2.println(F("Error:0"));
             }
 		} else if ( message == F("setHvacGroup") ) {
 			Serial.println(F("Setting HVAC group:"));
