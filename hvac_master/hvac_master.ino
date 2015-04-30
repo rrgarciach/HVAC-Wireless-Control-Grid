@@ -160,7 +160,7 @@ void setValueForScoutGroupFromHardwareSerial(int8_t groupId, String action, Hard
 				uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
 				scouts[i]->setMaxTemperature(value);
 			} else if (action == F("groupId")) {
-				Serial.println("CHANGING GROUP ID!!!");
+				Serial.println("CHANGING GROUP ID!!");
 				int8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
 				scouts[i]->setGroupId(value);
 			}
