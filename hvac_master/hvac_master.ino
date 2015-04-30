@@ -65,7 +65,7 @@ void setup() {
     // Open serial communications and wait for port to open:
     Serial2.begin(115200);
     Serial.begin(115200);
-	setNewHvacScout("ScoutPrueba00",0);
+//	setNewHvacScout("ScoutPrueba00",0);
 //	setNewHvacScout("escautcito",1);
 //	setNewHvacScout("lalalalla",2);
 //	setNewHvacScout("pancrasio scout",3);
@@ -107,6 +107,20 @@ bool setNewHvacScout(String name, uint8_t slot) {
 //    return false;
 }
 
+bool unsetNewHvacScout(uint8_t slot) {
+	delete scouts[slot];
+	scouts[slot] = NULL;
+	return true;
+}
+
+bool setScoutName(String name, uint8_t slot) {
+	scouts[slot]->setName(name);
+	if (scouts[slot]->getName() == name) {
+		return true;
+	}
+	return false;
+}
+
 void setHvacGroup(uint8_t scoutId, int8_t groupId) {
 	scouts[scoutId]->setGroupId(groupId);
 }
@@ -132,7 +146,7 @@ String scoutGroupsToJson() {
 	jsonArr += F("[");
 	for (int i = 0; i < scoutGroupsArraySize; i++) {
 		jsonArr += groupToJson(i);
-		if (scoutGroups[i+1] != NULL)
+		if ( i != scoutGroupsArraySize-1 && scoutGroups[i+1] != NULL)
 			jsonArr += F(",");
 	}
 	jsonArr += F("]");
@@ -159,10 +173,6 @@ void setValueForScoutGroupFromHardwareSerial(int8_t groupId, String action, Hard
 			} else if (action == F("setMaxTemperature")) {
 				uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
 				scouts[i]->setMaxTemperature(value);
-			} else if (action == F("groupId")) {
-				Serial.println("CHANGING GROUP ID!!");
-				int8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
-				scouts[i]->setGroupId(value);
 			}
         }
     }
@@ -224,9 +234,9 @@ String scoutsToJson() {
 		if (scouts[i] != NULL) {
 			jsonArr += scoutToJson(scouts[i],i);
 			// If it's not the last one, add the comma separator
-			if (scouts[i+1] != NULL)
-				jsonArr += F(",");
 		}
+		if ( i != scoutArraySize-1 && scouts[i+1] != NULL)
+			jsonArr += F(",");
 	}
 	jsonArr += F("]");
 	return jsonArr;
@@ -242,12 +252,15 @@ void setValueForScoutFromHardwareSerial(int8_t scoutId, String action, HardwareS
 //	delay(500);
 	if (action == F("changeDelayTime")) {
 		int value = readArgumentFromHardwareSerial(serial,';').toInt();
-		Serial.print("value: ");
-		Serial.println(value);
 		scouts[scoutId]->changeDelayTime(value);
+		
 	} else if (action == F("setMaxTemperature")) {
 		uint8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
 		scouts[scoutId]->setMaxTemperature(value);
+		
+	} else if (action == F("changeGroupId")) {
+		int8_t value = readArgumentFromHardwareSerial(serial,';').toInt();
+		scouts[scoutId]->setGroupId(value);
 	}
 }
 
@@ -292,16 +305,19 @@ void checkForMobile() {
 			fullState += "}";
 			Serial.println(fullState);
 			Serial2.println(fullState);
+			
         } else if ( message == F("getHvacScouts") ) {
 			Serial.println(F("Sending JSON of Scouts:"));
 			String scouts = scoutsToJson();
 			Serial.println(scouts);
 			Serial2.println(scouts);
+			
         } else if ( message == F("getHvacScoutsGroups") ) {
 			Serial.println(F("Sending JSON of Groups:"));
 			String groups = scoutGroupsToJson();
 			Serial.println(groups);
 			Serial2.println(groups);
+			
         // on command setNewHvacScout:
         } else if ( message == F("setNewHvacScout") ) {
             // Read stream for name:
@@ -325,6 +341,7 @@ void checkForMobile() {
                 Serial.println(F("ERROR: unable to create scout."));
                 Serial2.println(F("Error\(0\)"));
             }
+			
 		} else if ( message == F("setScoutName") ) {
             // Read stream for name:
             String name = readArgumentFromHardwareSerial(Serial2,',');
@@ -347,12 +364,13 @@ void checkForMobile() {
                 Serial.println(F("ERROR: unable to change scout's name."));
                 Serial2.println(F("Error:0"));
             }
-		} else if ( message == F("setNewHvacScout") ) {
+			
+		} else if ( message == F("unsetNewHvacScout") ) {
             // Read stream for slot:
             uint8_t slot = readArgumentFromHardwareSerial(Serial2,';').toInt();
             if (slot < 0 || slot > 9) {
                 Serial.println(F("ERROR: wrong slot value."));
-                Serial2.println(F("Error\(1\)"));
+                Serial2.println(F("Error:1"));
             }
             // Create HVAC Scout:
 			bool result = unsetNewHvacScout(slot);
@@ -363,6 +381,7 @@ void checkForMobile() {
                 Serial.println(F("ERROR: unable to remove scout."));
                 Serial2.println(F("Error:0"));
             }
+			
 		} else if ( message == F("setHvacGroup") ) {
 			Serial.println(F("Setting HVAC group:"));
 			// Read groupId:
@@ -381,13 +400,15 @@ void checkForMobile() {
 					Serial2.println(F("OK"));
 				}
 			}
+			
 		} else if ( message == F("triggerScout") ) {
 			int8_t scoutId = readArgumentFromHardwareSerial(Serial2,',').toInt();
 			String action = readArgumentFromHardwareSerial(Serial2,';');
 			
 			Serial.print(F("Triggering Scout \""));
 			Serial.print( scouts[scoutId]->getName() );
-			Serial.println(F("\" :"));
+			Serial.print(F("\". Action :"));
+			Serial.println(action);
 			
 			triggerScout(scoutId,action);
 			
@@ -397,7 +418,8 @@ void checkForMobile() {
 			
 			Serial.print(F("Setting Value for Scout \""));
 			Serial.print( scouts[scoutId]->getName() );
-			Serial.println(F("\" :"));
+			Serial.print(F("\". Action :"));
+			Serial.println(action);
 			
 			setValueForScoutFromHardwareSerial(scoutId,action,Serial2);
 			
@@ -407,7 +429,8 @@ void checkForMobile() {
 			
 			Serial.print(F("Triggering Scout Group \""));
 			Serial.print(scoutGroups[groupId]);
-			Serial.println(F("\" :"));
+			Serial.print(F("\". Action :"));
+			Serial.println(action);
 			
 			triggerScoutGroup(groupId,action);
 			
@@ -417,7 +440,8 @@ void checkForMobile() {
 			
 			Serial.print(F("Setting Value for Scout Group \""));
 			Serial.print(scoutGroups[groupId]);
-			Serial.println(F("\" :"));
+			Serial.print(F("\". Action :"));
+			Serial.println(action);
 			
 			setValueForScoutGroupFromHardwareSerial(groupId,action,Serial2);
 			
@@ -968,7 +992,7 @@ String readArgumentFromHardwareSerial(HardwareSerial &serial, char terminator)
 	while ( serial.available() ) {
 		c = serial.read();
 		Serial.print(c);
-		delay(50);
+//		delay(50);
 		if (c == terminator) break;
 		argument += c;
 	}
@@ -988,7 +1012,7 @@ String readArgumentFromSoftwareSerial(SoftwareSerial* serial, char terminator)
 	while ( serial->available() ) {
 		c = serial->read();
 		Serial.print(c);
-		delay(50);
+//		delay(50);
 		if (c == terminator) break;
 		argument += c;
 	}
