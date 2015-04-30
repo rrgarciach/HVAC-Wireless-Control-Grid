@@ -147,15 +147,22 @@ void receiveCommands() {
 		Serial.print(srl);
       delay(50);
       command += srl; //iterates char into string
-      
-      if (command == F("getScout;")) { //this compares catched string vs. expected command string
+      //this compares catched string vs. expected command string
+      if (command == F("getScout;")) {
         sendPageSerial();
-      } else if (command == F("turnOn;")) { //this compares catched string vs. expected command string
+		  
+      } else if (command == F("getType;")) {
+		Serial.print(F("hvac:HVAC Scout;"));
+		  
+      } else if (command == F("turnOn;")) {
         turnOnHvac();
-      } else if (command == F("turnOff;")) { //this compares catched string vs. expected command string
+		  
+      } else if (command == F("turnOff;")) {
         turnOffHvac();
-      } else if (command == F("changeDelayTime:")) { //this compares catched string vs. expected command string
+		  
+      } else if (command == F("changeDelayTime:")) {
         changeDelayTime();
+		  
       }
       
     }

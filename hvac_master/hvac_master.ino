@@ -180,6 +180,9 @@ String scoutToJson(HvacScout* scout, int index) {
 	jsonObj += F("\"id\":");
 	jsonObj += index;
 	jsonObj += F(",");
+	jsonObj += F("\"status\":");
+	jsonObj += scout->getStatus();
+	jsonObj += F(",");
 	jsonObj += F("\"groupId\":");
 	jsonObj += scout->getGroupId();
 	jsonObj += F(",");
@@ -274,7 +277,6 @@ void checkForMobile() {
   if ( Serial2.available() ) {
       String message;
     while ( Serial2.available() ) {
-        // on command setNewHvacScout:
 		message = readArgumentFromHardwareSerial(Serial2, ';');
 		if ( message == F("getFullState") ) {
 			Serial.println(F("Sending JSON of Full State:"));
@@ -296,6 +298,7 @@ void checkForMobile() {
 			String groups = scoutGroupsToJson();
 			Serial.println(groups);
 			Serial2.println(groups);
+        // on command setNewHvacScout:
         } else if ( message == F("setNewHvacScout") ) {
             // Read stream for name:
             String name = readArgumentFromHardwareSerial(Serial2,',');
@@ -387,33 +390,83 @@ void checkForScouts() {
     // Read each HVAC Scout to capture their states:
     for (int i = 0 ; i < scoutArraySize ; i++) {
         // If slot is NULL, step over:
-        if (scouts[i] == NULL) continue;
-		scouts[i]->start();
-		delay(50);
-		scouts[i]->serial->println(F("getScout;"));
-		delay(1500);
-		while ( scouts[i]->serial->available() ) {
-			message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-			if ( message == F("data") ) {
-				Serial.println();
-				Serial.print(F("ACTION: reading data from scout "));
+        if (scouts[i] == NULL) {
+			continue;
+//			SoftwareSerial* tempSerial = new SoftwareSerial(pinsRxTx[i][0],pinsRxTx[i][1]);
+//			tempSerial->begin(38400);
+//			Serial.println(F("Starting SPP"));
+//			digitalWrite(pin222A, LOW);
+//			digitalWrite(pinsRxTx[i][2], HIGH);
+//			digitalWrite(pin222A, HIGH);
+//			delay(500);
+//			tempSerial->println(F("AT"));
+//			Serial.println(F("AT"));
+//			delay(500);
+//			tempSerial->println(F("AT+INIT"));
+//			delay(500);
+//			digitalWrite(pin222A, LOW);
+//			delay(500);
+//			digitalWrite(pinsRxTx[i][2], LOW);
+//			digitalWrite(pin222A, HIGH);
+//			delay(50);
+//			// Request device type:
+//			tempSerial->println(F("getType;"));
+//			delay(1500);
+//			// If response is received:
+//			while ( tempSerial->available() ) {
+//				message = readArgumentFromSoftwareSerial(tempSerial,':');
+//				if ( message == F("hvac") ) {
+//					// If HVAC scout detected:
+//					Serial.println(F("HVAC scout detected."));
+//					String name = readArgumentFromSoftwareSerial(tempSerial,';');
+//					name += " ";
+//					name += i;
+//					// create HVAC scout:
+//					setNewHvacScout(name,i);
+//					break;
+//				} else if ( message == F("relay") ) {
+//					// If relay scout detected:
+//				}
+//			}
+//			tempSerial->end();
+		} else {
+			scouts[i]->start();
+			delay(50);
+			scouts[i]->serial->println(F("getScout;"));
+			delay(1500);
+			if ( scouts[i]->serial->available() ) {
+				scouts[i]->resetPing();
+				Serial.print(F("Reseted Ping for "));
 				Serial.println( scouts[i]->getName() );
-				while ( scouts[i]->serial->available() ) {
-					message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
-					if ( message == F("temperature") ) {
-						readTempFromHvacScout(scouts[i]);
-					} else if ( message == F("humidity") ) {
-						readHumidityFromHvacScout(scouts[i]);
-					} else if ( message == F("delayTime") ) {
-						readDelayTimeFromHvacScout(scouts[i]);
-					} else if ( message == F("quiet") ) {
-						readQuietFromHvacScout(scouts[i]);
-					} else if ( message == F("power") ) {
-						readPowerFromHvacScout(scouts[i]);
+			} else {
+				scouts[i]->ping();
+				Serial.print(F("Ping for "));
+				Serial.println( scouts[i]->getName() );
+			}
+			while ( scouts[i]->serial->available() ) {
+				message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+				if ( message == F("data") ) {
+//					Serial.println();
+					Serial.print(F("ACTION: reading data from scout "));
+					Serial.println( scouts[i]->getName() );
+					while ( scouts[i]->serial->available() ) {
+						message = readArgumentFromSoftwareSerial(scouts[i]->serial,':');
+						if ( message == F("temperature") ) {
+							readTempFromHvacScout(scouts[i]);
+						} else if ( message == F("humidity") ) {
+							readHumidityFromHvacScout(scouts[i]);
+						} else if ( message == F("delayTime") ) {
+							readDelayTimeFromHvacScout(scouts[i]);
+						} else if ( message == F("quiet") ) {
+							readQuietFromHvacScout(scouts[i]);
+						} else if ( message == F("power") ) {
+							readPowerFromHvacScout(scouts[i]);
+						}
 					}
+				} else {
 				}
-			} 
-			scouts[i]->end();
+				scouts[i]->end();
+			}
 		}
     }
 }
