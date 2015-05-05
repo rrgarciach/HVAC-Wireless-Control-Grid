@@ -27,6 +27,7 @@ uint8_t currentVal = 0;
 bool booPIR = false;
 bool booQuietZone = false;
 bool hvacPower = false;
+bool automatic = true;
 
 #define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
@@ -90,7 +91,7 @@ void updateStates() {
 void react() {
   Serial.println(F("reacting"));
   // turn off HVAC if quiet zone
-  if (true == booQuietZone && true == hvacPower) turnOffHvac();
+  if (true == booQuietZone && true == hvacPower && true == automatic) turnOffHvac();
 }
 
 // Function to print serialized page:
@@ -133,6 +134,13 @@ void sendPageSerial() {
   Serial.print(F("power:"));
   Serial.print(hvacPower);
   Serial.print(F(";"));
+  // send automatic state:
+  master.print(F("auto:"));
+  master.print(automatic);
+  master.print(F(";"));
+  Serial.print(F("auto:"));
+  Serial.print(automatic);
+  Serial.print(F(";"));
   // terminate serial line:
   master.println();
   Serial.println();
@@ -145,7 +153,7 @@ void receiveCommands() {
     while ( master.available() ) {
       srl = master.read();
 		Serial.print(srl);
-      delay(50);
+//      delay(50);
       command += srl; //iterates char into string
       //this compares catched string vs. expected command string
       if (command == F("getScout;")) {
@@ -162,6 +170,14 @@ void receiveCommands() {
 		  
       } else if (command == F("changeDelayTime:")) {
         changeDelayTime();
+		  
+      } else if (command == F("autoOn;")) {
+        automatic = true;
+		master.println(F("OK;"));
+		  
+      } else if (command == F("autoOff;")) {
+        automatic = false;
+		master.println(F("OK;"));
 		  
       }
       
@@ -208,10 +224,10 @@ void changeDelayTime() {
         timeDelayThreshold = intValue;
         timeDelayThreshold *= 1000;
         master.println(F("OK;"));
-        delay(50);
+//        delay(50);
     } else {
         master.println(F("ERROR:1;"));
-        delay(50);
+//        delay(50);
     }
 }
 
@@ -222,7 +238,7 @@ String readArgumentFromSoftwareSerial(SoftwareSerial &serial, char terminator)
 	while ( serial.available() ) {
 		c = serial.read();
 		Serial.print(c);
-		delay(50);
+//		delay(50);
 		if (c == terminator) break;
 		argument += c;
 	}
