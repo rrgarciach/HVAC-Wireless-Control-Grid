@@ -24,7 +24,6 @@ EthernetServer server(80);
 
 // Definition of digital pins:
 uint8_t pin222A = 2;
-//#define pinKEYScout_01 3
 #if defined(__AVR_ATmega2560__) // this is mega
 #define pinSSD 4
 #define pinBtRxMobile 10
@@ -56,14 +55,9 @@ int pinsRxTx[10][3] = {
 #error "unknown MCU or not enough memory"
 #endif
 
-// slave Bluetooth socket to communicate with Mobile App:
 // For HC-05 Bluetooth module's TX goes to arduino's TX (in this case, pin 3).
-SoftwareSerial mobile(pinBtRxMobile, pinBtTxMobile);
-// master Bluetooth socket to communicate with Scout Devices:
-//SoftwareSerial scout_01(pinBtRxScout_01,pinBtTxScout_01);
-
-// variable to store received characters from Bluetooth devices:
-char srl;
+// slave Bluetooth socket to communicate with Mobile App:
+//SoftwareSerial mobile(pinBtRxMobile, pinBtTxMobile);
 
 void setup() {
     // The next two lines are to avoid the board from hanging after some requests:
@@ -116,20 +110,20 @@ void checkForMobile() {
 			Serial.println( fullStateToJson() );
 			Serial2.println( fullStateToJson() );
 			
-        } else if ( message == F("getHvacScouts") ) {
+        } else if ( message == F("getScouts") ) {
 			Serial.println(F("Sending JSON of Scouts:"));
 			String scouts = scoutsToJson();
 			Serial.println(scouts);
 			Serial2.println(scouts);
 			
-        } else if ( message == F("getHvacScoutsGroups") ) {
+        } else if ( message == F("getScoutGroups") ) {
 			Serial.println(F("Sending JSON of Groups:"));
 			String groups = scoutGroupsToJson();
 			Serial.println(groups);
 			Serial2.println(groups);
 			
         // on command setNewHvacScout:
-        } else if ( message == F("setNewHvacScout") ) {
+        } else if ( message == F("newScout") ) {
             // Read stream for name:
             String name = readFromHardwareSerial(Serial2,',');
             if (name == "") {
@@ -143,7 +137,7 @@ void checkForMobile() {
                 Serial2.println(F("Error\(1\)"));
             }
             // Create HVAC Scout:
-			bool result = setNewHvacScout(name,slot);
+			bool result = newScout(name,slot);
             if (result == true) {
                 Serial.println(F("SUCCESS: Scout created."));
                 Serial2.println(F("OK"));
@@ -175,7 +169,7 @@ void checkForMobile() {
 //                Serial2.println(F("Error:0"));
 //            }
 //			
-		} else if ( message == F("unsetNewHvacScout") ) {
+		} else if ( message == F("deleteScout") ) {
             // Read stream for slot:
             uint8_t slot = readFromHardwareSerial(Serial2,';').toInt();
             if (slot < 0 || slot > 9) {
@@ -183,7 +177,7 @@ void checkForMobile() {
                 Serial2.println(F("Error:1"));
             }
             // Create HVAC Scout:
-			bool result = unsetNewHvacScout(slot);
+			bool result = deleteScout(slot);
             if (result == true) {
                 Serial.println(F("SUCCESS: Scout removed."));
                 Serial2.println(F("OK"));
@@ -192,7 +186,7 @@ void checkForMobile() {
                 Serial2.println(F("Error:0"));
             }
 			
-		} else if ( message == F("setHvacGroup") ) {
+		} else if ( message == F("setGroupId") ) {
 			Serial.println(F("Setting HVAC group:"));
 			// Read groupId:
 			uint8_t scoutId = readFromHardwareSerial(Serial2,',').toInt();
@@ -290,11 +284,11 @@ void checkForScouts() {
 					Serial.println( scouts[i]->getName() );
 					while ( scouts[i]->serial->available() ) {
 						message = readFromSoftwareSerial(scouts[i]->serial,':');
-						if ( message == F("temperature") ) {
+						if ( message == F("temp") ) {
 							readTempFromHvacScout(scouts[i]);
-						} else if ( message == F("humidity") ) {
+						} else if ( message == F("humi") ) {
 							readHumidityFromHvacScout(scouts[i]);
-						} else if ( message == F("delayTime") ) {
+						} else if ( message == F("delTime") ) {
 							readDelayTimeFromHvacScout(scouts[i]);
 						} else if ( message == F("quiet") ) {
 							readQuietFromHvacScout(scouts[i]);
@@ -321,13 +315,7 @@ void checkForEthernet() {
     // an HTTP request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
-//      if (client.available()) {
-//        char c = client.read();
-//        Serial.write(c);
-//        message += c;
-////        Serial.print(message);
-//        // GET verb received:
-////        Serial.println(F("evaluating verb:"));
+        Serial.println(F("evaluating verb:"));
 		message = readFromEthernet(client,' ');
         if (message == F("GET")) {
           readGET(client);
@@ -365,7 +353,7 @@ void checkForEthernet() {
     delay(1);
     // close the connection:
     client.stop();
-    Serial.println(F("\nclient disconnected"));
+    Serial.println(F("\nClient disconnected"));
   }
 }
 
@@ -436,12 +424,12 @@ void startSPP() {
     }
 }
 // Create Scout:
-bool setNewHvacScout(String name, uint8_t slot) {
+bool newScout(String name, uint8_t slot) {
 	scouts[slot] = new HvacScout(name, pinsRxTx[slot][0], pinsRxTx[slot][1], pinsRxTx[slot][2], pin222A);
 	scouts[slot]->startSPP();
 }
 // Delete Scout:
-bool unsetNewHvacScout(uint8_t slot) {
+bool deleteScout(uint8_t slot) {
 	delete scouts[slot];
 	scouts[slot] = NULL;
 	return true;
@@ -453,21 +441,7 @@ bool isLastScout(uint8_t index) {
 	}
 	return true;
 }
-String scoutsToJson() {
-	String jsonArr;
-	jsonArr += F("[");
-	for (int i = 0; i < scoutArraySize; i++) {
-		// If scout slot is not NULL, print include it in JSON:
-		if (scouts[i] != NULL) {
-			jsonArr += scouts[i]->scoutToJson(i);
-			// If it's not the last one, add the comma separator
-			if (isLastScout(i) == false)
-				jsonArr += F(",");
-		}
-	}
-	jsonArr += F("]");
-	return jsonArr;
-}
+
 void triggerScout(int8_t scoutId, String action) {
 	if (action == F("turnOn")) scouts[scoutId]->triggerPower(true);
 	else if (action == F("turnOff")) scouts[scoutId]->triggerPower(false);
@@ -481,19 +455,20 @@ void setValueForScoutFromHardwareSerial(int8_t scoutId, String action, HardwareS
 		uint32_t value = readFromHardwareSerial(serial,';').toInt();
 		scouts[scoutId]->changeDelayTime(value);
 		
-	} else if (action == F("setMaxTemp")) {
-		uint8_t value = readFromHardwareSerial(serial,';').toInt();
-		scouts[scoutId]->setMaxTemperature(value);
-		
 	} else if (action == F("setGroupId")) {
 		int8_t value = readFromHardwareSerial(serial,';').toInt();
 		scouts[scoutId]->setGroupId(value);
+		
+	} else if (action == F("setMaxTemp")) {
+		uint8_t value = readFromHardwareSerial(serial,';').toInt();
+		scouts[scoutId]->setMaxTemperature(value);
 		
 	} else if (action == F("setScoutName")) {
 		String name = readFromHardwareSerial(Serial2,';');
 		scouts[scoutId]->setName(name);
 	}
 }
+
 void readTempFromHvacScout(HvacScout* scout) {
 	Serial.println(F("\nACTION: readTempFromHvacScout"));
 	uint8_t temperature = readFromSoftwareSerial(scout->serial,';').toInt();
@@ -514,7 +489,6 @@ void readTempFromHvacScout(HvacScout* scout) {
         Serial2.println(F(";"));
     }
 }
-
 void readHumidityFromHvacScout(HvacScout* scout) {
 	Serial.println(F("\nACTION: readHumidityFromHvacScout"));
 	uint8_t humidity = readFromSoftwareSerial(scout->serial,';').toInt();
@@ -535,7 +509,6 @@ void readHumidityFromHvacScout(HvacScout* scout) {
         Serial2.println(F(";"));
     }
 }
-
 void readDelayTimeFromHvacScout(HvacScout* scout) {
   Serial.println(F("\nACTION: readDelayTimeFromHvacScout"));
     uint16_t delayTime = readFromSoftwareSerial(scout->serial,';').toInt();
@@ -556,7 +529,6 @@ void readDelayTimeFromHvacScout(HvacScout* scout) {
         Serial2.println(F(";"));
     }
 }
-
 void readQuietFromHvacScout(HvacScout* scout) {
 	Serial.println(F("\nACTION: readQuietFromHvacScout"));
 	bool quiet = readFromSoftwareSerial(scout->serial,';').toInt();
@@ -568,7 +540,6 @@ void readQuietFromHvacScout(HvacScout* scout) {
 	delay(50);
 	//    Serial2.println(F("OK"));
 }
-
 void readPowerFromHvacScout(HvacScout* scout) {
     Serial.println(F("\nACTION: readPowerFromHvacScout"));
     bool power = readFromSoftwareSerial(scout->serial,';').toInt();
@@ -580,6 +551,17 @@ void readPowerFromHvacScout(HvacScout* scout) {
     delay(50);
 //    Serial2.println(F("OK"));
 }
+void readAutoFromHvacScout(HvacScout* scout) {
+    Serial.println(F("\nACTION: readAutoFromHvacScout"));
+    bool automatic = readFromSoftwareSerial(scout->serial,';').toInt();
+    scout->setAutomatic( automatic );
+	Serial.println();
+    Serial.print( scout->getName() );
+    Serial.print(F(".power: "));
+    Serial.println( scout->getAutomatic() );
+    delay(50);
+//    Serial2.println(F("OK"));
+}
 
 
 
@@ -587,26 +569,14 @@ void readPowerFromHvacScout(HvacScout* scout) {
 void setHvacGroup(uint8_t scoutId, int8_t groupId) {
 	scouts[scoutId]->setGroupId(groupId);
 }
-// set name for Scout
-void setGroupName(int8_t groupId, String name) {
-	scoutGroups[groupId]->setName(name);
-}
-// get Group's name:
-String getGroupName(int8_t groupId) {
-	return scoutGroups[groupId]->getName();
-}
-
-String scoutGroupsToJson() {
-	String jsonArr;
-	jsonArr += F("[");
-	for (int i = 0; i < scoutGroupsArraySize; i++) {
-		jsonArr += scoutGroups[i]->groupToJson(i);
-		if ( i != scoutGroupsArraySize-1)
-			jsonArr += F(",");
-	}
-	jsonArr += F("]");
-	return jsonArr;
-}
+//// set name for Scout
+//void setGroupName(int8_t groupId, String name) {
+//	scoutGroups[groupId]->setName(name);
+//}
+//// get Group's name:
+//String getGroupName(int8_t groupId) {
+//	return scoutGroups[groupId]->getName();
+//}
 void triggerScoutGroup(int8_t groupId, String action) {
 	for (int i = 0; i < scoutArraySize; i++) {
         if (scouts[i] == NULL) continue;
@@ -625,12 +595,45 @@ void setValueForScoutGroupFromHardwareSerial(int8_t groupId, String action, Hard
 			if (action == F("setDelTime")) {
 				uint8_t value = readFromHardwareSerial(serial,';').toInt();
 				scouts[i]->changeDelayTime(value);
+			} else if (action == F("setGroupId")) {
+				uint8_t value = readFromHardwareSerial(serial,';').toInt();
+				scouts[i]->setGroupId(value);
 			} else if (action == F("setMaxTemp")) {
+				uint8_t value = readFromHardwareSerial(serial,';').toInt();
+				scouts[i]->setMaxTemperature(value);
+			} else if (action == F("setName")) {
 				uint8_t value = readFromHardwareSerial(serial,';').toInt();
 				scouts[i]->setMaxTemperature(value);
 			}
         }
     }
+}
+
+String scoutsToJson() {
+	String jsonArr;
+	jsonArr += F("[");
+	for (int i = 0; i < scoutArraySize; i++) {
+		// If scout slot is not NULL, print include it in JSON:
+		if (scouts[i] != NULL) {
+			jsonArr += scouts[i]->scoutToJson(i);
+			// If it's not the last one, add the comma separator
+			if (isLastScout(i) == false)
+				jsonArr += F(",");
+		}
+	}
+	jsonArr += F("]");
+	return jsonArr;
+}
+String scoutGroupsToJson() {
+	String jsonArr;
+	jsonArr += F("[");
+	for (int i = 0; i < scoutGroupsArraySize; i++) {
+		jsonArr += scoutGroups[i]->groupToJson(i);
+		if ( i != scoutGroupsArraySize-1)
+			jsonArr += F(",");
+	}
+	jsonArr += F("]");
+	return jsonArr;
 }
 String fullStateToJson() {
 	String fullState;
@@ -652,115 +655,190 @@ void readGET(EthernetClient &client) {
   if ( client.available() ) {
     String message; // String to process:
 	  message = readFromEthernet(client,' ');
-//    while ( client.available() ) {
-//      srl = client.read();
-//      delay(50);
-//      Serial.print(srl);
-//      if (srl == '/') {
-//        message = "/";
-//        while ( client.available() ) {
-//          srl = client.read();
-//          delay(50);
-//          Serial.print(srl);
-//          message += srl;
-          // read GET variables
-          if ( message == F("/01") ) {
-                printHeaders(client);
-				if (scouts[0] != NULL)
-                client.println( scouts[0]->scoutToJson(0) );
-                return;
-          } else if ( message == F("/02") ) {
-                printHeaders(client);
-				if (scouts[1] != NULL)
-                client.println( scouts[1]->scoutToJson(1) );
-                return;
-          } else if ( message == F("/03") ) {
-                printHeaders(client);
-				if (scouts[2] != NULL)
-					client.println( scouts[2]->scoutToJson(2) );
-                return;
-	  // ......................................................... //
-          } else if ( message == F("/10") ) {
-				if (scouts[9] != NULL)
-                printHeaders(client);
-                client.println( scouts[9]->scoutToJson(9) );
-                return;
-          } else if ( message == F("/") ) {
-				// printing JSON response:
-				Serial.println(F("Reading all scouts"));
-				printHeaders(client);
-	//            client.print(F("["));
-				client.print(fullStateToJson());
-	//            printScoutsJSON(client);
-	//            client.print(F("]"));
-            return;
-          } else if ( message.length() > 3) {
-				Serial.println(F("No more recognized parameters."));
-            return;
-          }
-//        } // end while
-//      }
-        
-//    }
+	  // read GET variables
+	  if ( message == F("/01") ) {
+			printHeaders(client);
+			if (scouts[0] != NULL)
+			client.println( scouts[0]->scoutToJson(0) );
+			return;
+	  } else if ( message == F("/02") ) {
+			printHeaders(client);
+			if (scouts[1] != NULL)
+			client.println( scouts[1]->scoutToJson(1) );
+			return;
+	  } else if ( message == F("/03") ) {
+			printHeaders(client);
+			if (scouts[2] != NULL)
+				client.println( scouts[2]->scoutToJson(2) );
+			return;
+  // ......................................................... //
+	  } else if ( message == F("/10") ) {
+			if (scouts[9] != NULL)
+			printHeaders(client);
+			client.println( scouts[9]->scoutToJson(9) );
+			return;
+	  } else if ( message == F("/") ) {
+			// printing JSON response:
+			Serial.println(F("Reading all scouts:"));
+			printHeaders(client);
+			client.print(fullStateToJson());
+			return;
+	  } else if ( message.length() > 3) {
+			Serial.println(F("No more recognized parameters."));
+			return;
+	  }
   }
 }
 
 void readPOST(EthernetClient &client) {
-  Serial.println(F("\nReading POST verb"));
-  if ( client.available() ) {
-    String message; // String to process:
-	  message = readFromEthernet(client,' ');
-    bool currentLineIsBlank = true;
-    while ( client.available() ) {
-      srl = client.read();
-//      delay(50);
-      Serial.print(srl);
-      message += srl;
-      if (srl == '\n') {
-        currentLineIsBlank = true; // you're starting a new line
-      }
-      else if (srl != '\r') {
-        currentLineIsBlank = false;// you've gotten a character on the current line
-      }
-      if (srl == '\r' && currentLineIsBlank) {
-        message = "";
-        Serial.print(F("POST detected!"));
-        while ( client.available() ) {
-          srl = client.read();
-          if (srl == '&' || srl == '\n' || srl == '\r') {
-            message = "";
-            Serial.print(srl);
-            continue;
-          }
-//          delay(50);
-            Serial.print(srl);
-            message += srl;
-          // read GET variables
-          if ( message == F("power=on") ) {
-            Serial.println(F("Setting ON power state..."));
-            turnOnPowerScoutsFromPOST(client);
-            message = "";
-          } else if ( message == F("power=off") ) {
-            Serial.println(F("Setting OFF power state..."));
-            turnOffPowerScoutsFromPOST(client);
-            message = "";
-          } else if ( message == F("temperature=") ) {
-            Serial.println(F("Setting temperature..."));
-            setScoutsDelayTimeFromPOST(client);
-            message = "";
-          } else if ( message == F("delayTime=") ) {
-            Serial.println(F("Setting delay time..."));
-            setScoutsDelayTimeFromPOST(client);
-            message = "";
-          } else if ( message.length() > 15) {
-            Serial.println(F("No more recognized parameters."));
-            return;
-          }
-        } // end while
-      }
-        
-    }
-  }
+	Serial.println(F("\nReading POST verb:"));
+	if ( client.available() ) {
+		String message; // String to process:
+//		message = readFromEthernet(client,' ');
+		bool currentLineIsBlank = true;
+		while ( client.available() ) {
+			char c;
+			c = client.read();
+//			delay(50);
+			Serial.print(c);
+			message += c;
+			// This next conditional is to detect /r/n which means the end of all parameters:
+			if (c == '\n') {
+				currentLineIsBlank = true; // you're starting a new line
+			} else if (c != '\r') {
+				currentLineIsBlank = false; // you've gotten a character on the current line
+			}
+			if (c == '\r' && currentLineIsBlank) {
+				// Start reding POST parameters:
+				Serial.print(F("POST detected!"));
+				message = "";
+				// Define if action is for single Scout or for Group:
+				int id;
+				bool scout = false;
+				bool group = false;
+				while ( client.available() ) {
+					c = client.read();
+					if (c == '&' || c == '\n' || c == '\r') {
+						message = "";
+						Serial.print(c);
+						continue;
+					}
+//					delay(50);
+					Serial.print(c);
+					message += c;
+					// Read GET variables:
+					if ( message == F("scout=") ) {
+						id = readFromEthernet(client,'&').toInt();
+						Serial.print("scout");
+						// Trigger action for Scout or for Group:
+						scout = true;
+						group = false;
+						message="";
+
+					} else if ( message == F("group=") ) {
+						id = readFromEthernet(client,'&').toInt();
+						scout = false;
+						group = true;
+						message="";
+
+					} else if ( message == F("turnOn=") ) {
+						Serial.println(F("Setting ON power state..."));
+						readFromEthernet(client,'&').toInt();
+						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->triggerPower(true);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->triggerPower(true,scouts,scoutGroupsArraySize);
+						}
+						message="";
+
+					} else if ( message == F("turnOff=") ) {
+						Serial.println(F("Setting OFF power state..."));
+						readFromEthernet(client,'&').toInt();
+						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->triggerPower(false);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->triggerPower(false,scouts,scoutGroupsArraySize);
+						}
+						message="";
+
+					} else if ( message == F("autoOn=") ) {
+						Serial.println(F("Setting OFF automatic state..."));
+						readFromEthernet(client,'&').toInt();
+						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->setAutomatic(true);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->setAutomatic(true);
+						}
+						message="";
+
+					} else if ( message == F("autoOff=") ) {
+						Serial.println(F("Setting OFF automatic state..."));
+						readFromEthernet(client,'&').toInt();
+						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->setAutomatic(false);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->setAutomatic(false);
+						}
+						message="";
+
+					} else if ( message == F("setDelTime=") ) {
+						Serial.println(F("Setting delay time..."));
+						uint16_t value = readFromEthernet(client,'&').toInt();
+//						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->changeDelayTime(value);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->changeDelayTime(value,scouts,scoutGroupsArraySize);
+						}
+						message="";
+
+					} else if ( message == F("setMaxTemp=") ) {
+						Serial.println(F("Setting max temperature..."));
+						int value = readFromEthernet(client,'&').toInt();
+//						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->changeDelayTime(value);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->changeDelayTime(value,scouts,scoutGroupsArraySize);
+						}
+						message="";
+
+					} else if ( message == F("setName=") ) {
+						Serial.println(F("Setting Scout Name..."));
+						String name = readFromEthernet(client,'&');
+//						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->setName(name);
+						} else if (group == true) {
+							if (scoutGroups[id] != NULL) scoutGroups[id]->setName(name);
+						}
+						message="";
+
+					} else if ( message == F("setGroupId=") ) {
+						Serial.println(F("Setting Group ID..."));
+						int groupId = readFromEthernet(client,'&').toInt();
+						if (groupId >= scoutGroupsArraySize) return;
+						// Trigger action for Scout or for Group:
+						if (scout == true) {
+							if (scouts[id] != NULL) scouts[id]->setGroupId(groupId);
+						} else if (group == true) {}
+						message="";
+
+					} else if ( message.length() > 15 ) {
+						Serial.println(F("No more recognized parameters."));
+						return;
+
+					}
+				} // end while
+				printHeaders(client);
+				client.print("{\"result\":\"success\"}");
+			}
+		}
+	}
 }
 
 void printHeaders(EthernetClient &client) {
@@ -772,148 +850,6 @@ void printHeaders(EthernetClient &client) {
   client.println();
 }
 
-
-void printScoutsJSON(EthernetClient &client) {
-    for (int i = 0; i < scoutArraySize; i++) {
-		if (scouts[i] == NULL) continue;
-		
-        // start scout JSON object:
-		client.println( scouts[i]->scoutToJson(i) );
-        if ( i < (scoutArraySize-1) ) client.print(F(","));
-    }
-}
-
-void printScoutJSON(EthernetClient &client, HvacScout* scout) {
-    Serial.print(F("ACTION: reading "));
-    Serial.println( scouts[0]->getName() );
-    if (scout != NULL) {
-        // start scout JSON object:
-        client.print(F("{"));
-        // print name:
-        client.print(F("\"name\":"));
-        client.print(F("\""));
-        client.print( scout->getName() );
-        client.print(F("\","));
-        // print temperature:
-        client.print(F("\"temperature\":"));
-        client.print( scout->getTemperature() );
-        client.print(F(","));
-        // print quiet zone:
-        client.print(F("\"quiet\":"));
-        client.print( scout->getQuiet() );
-        client.print(F(","));
-        // print power status:
-        client.print(F("\"power\":"));
-        client.print( scout->getPower() );
-        client.print(F(","));
-        // print delay time:
-        client.print(F("\"delayTime\":"));
-        client.print( scout->getDelayTime() );
-        client.print(F("}"));
-        // in case that the Scout doesn't exists:
-    } else {
-        client.print(F("{}"));
-    }
-}
-
-// Turn ON ALL scouts after receiving command from HTTP client:
-void turnOnPowerScoutsFromPOST(EthernetClient &client) {
-    for (int i = 0; i < scoutArraySize; i++) {
-        if (scouts[i] == NULL) continue;
-        if (scouts[i]->getPower() == false) {
-            scouts[i]->setPower(true);
-            // send success response to HTTP client:
-            client.print(F("power state:"));
-            client.println(scouts[i]->getPower());
-        }
-    }
-}
-// Turn ON scout after receiving command from HTTP client:
-void turnOnPowerScoutFromPOST(EthernetClient &client, HvacScout* scout) {
-    if (scout == NULL) return;
-    if (scout->getPower() == false) {
-        scout->setPower(true);
-    }
-    // send success response to HTTP client:
-    client.print(F("power state:"));
-    client.println(scout->getPower());
-}
-
-// Turn OFF ALL scout after receiving command from HTTP client:
-void turnOffPowerScoutsFromPOST(EthernetClient &client) {
-    for (int i = 0; i < scoutArraySize; i++) {
-        if (scouts[i] == NULL) continue;
-        if (scouts[i]->getPower() == true) {
-            scouts[i]->setPower(false);
-        }
-        client.print(F("power state:"));
-        client.println(scouts[i]->getPower());
-    }
-}
-// Turn OFF scout after receiving command from HTTP client:
-void turnOffPowerScoutsFromPOST(EthernetClient &client, HvacScout* scout) {
-    if (scout == NULL) return;
-    if (scout->getPower() == true) {
-        scout->setPower(false);
-    }
-    client.print(F("power state:"));
-    client.println(scout->getPower());
-}
-
-// Read value from POST and change Delay Time of ALL scouts after receiving command from HTTP client:
-void setScoutsDelayTimeFromPOST(EthernetClient &client) {
-    String strValue;
-    while ( client.available() ) {
-        srl = client.read();
-        if (srl == ';') break;
-        strValue += srl;
-    }
-    
-    uint16_t delayTime = strValue.toInt();
-    if (delayTime > 0) {
-        for (int i = 0; i < scoutArraySize; i++) {
-            if (scouts[i] == NULL) continue;
-            scouts[i]->setDelayTime( delayTime );
-        }
-        printScoutsJSON(client);
-    } else {
-        Serial.println(F("Error reading delay time from POST"));
-        // Error for JSON response:
-        client.println(F("{'error':{ 'code':0, 'message':'wrong delayTime provided' }"));
-    }
-}
-// Read value from POST and change Delay Time of scout after receiving command from HTTP client:
-void setScoutDelayTimeFromPOST(EthernetClient &client, HvacScout* scout) {
-    String strValue;
-    while ( client.available() ) {
-        srl = client.read();
-        if (srl == ';') break;
-        strValue += srl;
-    }
-    
-    uint16_t delayTime = strValue.toInt();
-    if (delayTime > 0) {
-        if (scout == NULL) return;
-        scout->setDelayTime( delayTime );
-        printScoutJSON(client, scout);
-    } else {
-        Serial.print(F("Error reading delay time from POST for scout "));
-        // Error for JSON response:
-        client.print(F("{'name':'"));
-        client.print( scout->getName() );
-        client.print(F("',"));
-        client.print(F("'error':{ 'code':0, 'message':'wrong delayTime provided' }"));
-        client.println(F("}"));
-    }
-}
-
-//bool readCommandFromHardwareSerial(HardwareSerial &serial, String command, char terminator)
-//{
-//	if (command == readFromHardwareSerial(serial,terminator)) {
-//		return true;
-//	}
-//	return false;
-//}
 String readFromHardwareSerial(HardwareSerial &serial, char terminator)
 {
 	String argument;
@@ -927,13 +863,6 @@ String readFromHardwareSerial(HardwareSerial &serial, char terminator)
 	}
 	return argument;
 }
-//bool readCommandFromSoftwareSerial(SoftwareSerial* serial, String command, char terminator)
-//{
-//	if (command == readFromSoftwareSerial(serial,terminator)) {
-//		return true;
-//	}
-//	return false;
-//}
 String readFromSoftwareSerial(SoftwareSerial* serial, char terminator)
 {
 	String argument;

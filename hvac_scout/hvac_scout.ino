@@ -57,7 +57,7 @@ void loop() {
 
 // Function to update state's variables:
 void updateStates() {
-  Serial.println(F("update states"));
+  Serial.println(F("Update states"));
   // PIR functionality:
   // check if movement:
   booPIR = digitalRead(pinPIR);
@@ -89,7 +89,7 @@ void updateStates() {
 
 // Function to react/trigger physical controls:
 void react() {
-  Serial.println(F("reacting"));
+  Serial.println(F("Reacting"));
   // turn off HVAC if quiet zone
   if (true == booQuietZone && true == hvacPower && true == automatic) turnOffHvac();
 }
@@ -100,24 +100,24 @@ void sendPageSerial() {
   master.print(F("data:"));
   Serial.print(F("data:"));
   // send temperature:
-  master.print(F("temperature:"));
+  master.print(F("temp:"));
   master.print(temperatureCurrent);
   master.print(F(";"));
-  Serial.print(F("temperature:"));
+  Serial.print(F("temp:"));
   Serial.print(temperatureCurrent);
   Serial.print(F(";"));
   // send humidity:
-  master.print(F("humidity:"));
+  master.print(F("humi:"));
   master.print(humidityCurrent);
   master.print(F(";"));
-  Serial.print(F("humidity:"));
+  Serial.print(F("humi:"));
   Serial.print(humidityCurrent);
   Serial.print(F(";"));
   // send delaytime:
-  master.print(F("delayTime:"));
+  master.print(F("delTime:"));
   master.print(timeDelayThreshold / 1000);
   master.print(F(";"));
-  Serial.print(F("delayTime:"));
+  Serial.print(F("delTime:"));
   Serial.print(timeDelayThreshold / 1000);
   Serial.print(F(";"));
   // send quiet zone:
@@ -148,7 +148,7 @@ void sendPageSerial() {
 
 void receiveCommands() {
   if ( master.available() ) {
-    Serial.println(F("reading from master"));
+    Serial.println(F("Reading from master"));
     String command; //string to store entire command line
     while ( master.available() ) {
       srl = master.read();
@@ -168,7 +168,7 @@ void receiveCommands() {
       } else if (command == F("turnOff;")) {
         turnOffHvac();
 		  
-      } else if (command == F("changeDelayTime:")) {
+      } else if (command == F("setDelTime:")) {
         changeDelayTime();
 		  
       } else if (command == F("autoOn;")) {
@@ -217,7 +217,7 @@ void turnOffHvac() {
 }
 
 void changeDelayTime() {
-	Serial.print(F("changeDelayTime:"));
+	Serial.print(F("setDelTime:"));
     uint16_t intValue = readArgumentFromSoftwareSerial(master,';').toInt();
     if (intValue > 0) {
 		Serial.println(intValue);
